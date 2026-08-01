@@ -65,24 +65,25 @@ export default function WordsPage() {
   }, [userId, tab]);
 
   async function loadTab() {
-    if (!userId) return;
-    setLoading(true);
+  if (!userId) return;
+  setLoading(true);
 
-    // বুকমার্কের তালিকা সবসময় লাগবে (কার্ডে আইকন দেখানোর জন্য)
+  try {
     const { data: bookmarkRows } = await supabase
       .from("user_word_progress")
       .select("word_id")
       .eq("user_id", userId)
       .eq("is_bookmarked", true);
+
     setBookmarks(new Set((bookmarkRows ?? []).map((r: any) => r.word_id)));
 
     if (tab === "new") {
-      // যেগুলো learned হয়ে গেছে তাদের id বের করা
       const { data: learnedRows } = await supabase
         .from("user_word_progress")
         .select("word_id")
         .eq("user_id", userId)
         .eq("status", "learned");
+
       const learnedIds = (learnedRows ?? []).map((r: any) => r.word_id);
 
       let query = supabase
@@ -98,27 +99,37 @@ export default function WordsPage() {
 
       const { data } = await query;
       setWords((data as Word[]) ?? []);
-    } else if (tab === "learned") {
-      const { data } = await supabase
-        .from("user_word_progress")
-        .select("words(*)")
-        .eq("user_id", userId)
-        .eq("status", "learned");
-      const list = (data ?? []).map((r: any) => r.words).filter(Boolean);
-      setWords(list as Word[]);
-    } else {
-      const { data } = await supabase
-        .from("user_word_progress")
-        .select("words(*)")
-        .eq("user_id", userId)
-        .eq("is_bookmarked", true);
-      const list = (data ?? []).map((r: any) => r.words).filter(Boolean);
-      setWords(list as Word[]);
-    }
 
+    } else {
+      const fieldToFilter = tab === "learned" ? "status" : "is_bookmarked";
+      const filterValue = tab === "learned" ? "learned" : true;
+
+      const { data: rows } = await supabase
+        .from("user_word_progress")
+        .select("word_id")
+        .eq("user_id", userId)
+        .eq(fieldToFilter, filterValue);
+
+      const ids = (rows ?? []).map((r: any) => r.word_id);
+
+      if (ids.length === 0) {
+        setWords([]);
+      } else {
+        const { data: wordRows } = await supabase
+          .from("words")
+          .select("*")
+          .in("id", ids)
+          .order("order_index", { ascending: true });
+
+        setWords((wordRows as Word[]) ?? []);
+      }
+    }
+  } catch (error) {
+    console.error("Error loading tab:", error);
+  } finally {
     setLoading(false);
   }
-
+  }
   async function handleNext() {
     if (!userId || words.length === 0) return;
     setAdvancing(true);
