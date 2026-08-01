@@ -5,14 +5,18 @@ import { supabase } from "@/lib/supabase";
 import { getDeviceId } from "@/lib/device";
 import WordCard from "@/components/WordCard";
 
+type Example = {
+  example_en: string;
+  example_bn: string;
+};
+
 type Word = {
   id: number;
   word: string;
   pos: string | null;
   phonetic_bangla: string | null;
   bangla_meaning: string;
-  example_en: string | null;
-  example_bn: string | null;
+  examples: Example[];
 };
 
 type Tab = "new" | "learned" | "bookmarked";
@@ -35,7 +39,6 @@ export default function WordsPage() {
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
 
-  // ইউজার লোড করা
   useEffect(() => {
     async function initUser() {
       const deviceId = getDeviceId();
@@ -57,84 +60,107 @@ export default function WordsPage() {
     initUser();
   }, []);
 
-  // ট্যাব বা ইউজার বদলালে শব্দ লোড করা
   useEffect(() => {
     if (!userId) return;
     loadTab();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, tab]);
 
+  // শব্দের id দিয়ে তাদের উদাহরণগুলো এনে জোড়া লাগানো (join ছাড়া, দুই ধাপে)
+  async function attachExamples(
+    wordList: Omit<Word, "examples">[]
+  ): Promise<Word[]> {
+    if (wordList.length === 0) return [];
+
+    const ids = wordList.map((w) => w.id);
+    const { data: exampleRows } = await supabase
+      .from("word_examples")
+      .select("word_id, example_en, example_bn, order_index")
+      .in("word_id", ids)
+      .order("order_index", { ascending: true });
+
+    const grouped: Record<number, Example[]> = {};
+    (exampleRows ?? []).forEach((r: any) => {
+      if (!grouped[r.word_id]) grouped[r.word_id] = [];
+      grouped[r.word_id].push({
+        example_en: r.example_en,
+        example_bn: r.example_bn,
+      });
+    });
+
+    return wordList.map((w) => ({ ...w, examples: grouped[w.id] ?? [] }));
+  }
+
   async function loadTab() {
-  if (!userId) return;
-  setLoading(true);
+    if (!userId) return;
+    setLoading(true);
 
-  try {
-    const { data: bookmarkRows } = await supabase
-      .from("user_word_progress")
-      .select("word_id")
-      .eq("user_id", userId)
-      .eq("is_bookmarked", true);
-
-    setBookmarks(new Set((bookmarkRows ?? []).map((r: any) => r.word_id)));
-
-    if (tab === "new") {
-      const { data: learnedRows } = await supabase
+    try {
+      const { data: bookmarkRows } = await supabase
         .from("user_word_progress")
         .select("word_id")
         .eq("user_id", userId)
-        .eq("status", "learned");
+        .eq("is_bookmarked", true);
 
-      const learnedIds = (learnedRows ?? []).map((r: any) => r.word_id);
+      setBookmarks(new Set((bookmarkRows ?? []).map((r: any) => r.word_id)));
 
-      let query = supabase
-        .from("words")
-        .select("*")
-        .eq("level", cefrLevel)
-        .order("order_index", { ascending: true })
-        .limit(PAGE_SIZE);
+      if (tab === "new") {
+        const { data: learnedRows } = await supabase
+          .from("user_word_progress")
+          .select("word_id")
+          .eq("user_id", userId)
+          .eq("status", "learned");
 
-      if (learnedIds.length > 0) {
-        query = query.not("id", "in", `(${learnedIds.join(",")})`);
-      }
+        const learnedIds = (learnedRows ?? []).map((r: any) => r.word_id);
 
-      const { data } = await query;
-      setWords((data as Word[]) ?? []);
-
-    } else {
-      const fieldToFilter = tab === "learned" ? "status" : "is_bookmarked";
-      const filterValue = tab === "learned" ? "learned" : true;
-
-      const { data: rows } = await supabase
-        .from("user_word_progress")
-        .select("word_id")
-        .eq("user_id", userId)
-        .eq(fieldToFilter, filterValue);
-
-      const ids = (rows ?? []).map((r: any) => r.word_id);
-
-      if (ids.length === 0) {
-        setWords([]);
-      } else {
-        const { data: wordRows } = await supabase
+        let query = supabase
           .from("words")
           .select("*")
-          .in("id", ids)
-          .order("order_index", { ascending: true });
+          .eq("level", cefrLevel)
+          .order("order_index", { ascending: true })
+          .limit(PAGE_SIZE);
 
-        setWords((wordRows as Word[]) ?? []);
+        if (learnedIds.length > 0) {
+          query = query.not("id", "in", `(${learnedIds.join(",")})`);
+        }
+
+        const { data } = await query;
+        setWords(await attachExamples((data as any[]) ?? []));
+      } else {
+        const fieldToFilter = tab === "learned" ? "status" : "is_bookmarked";
+        const filterValue = tab === "learned" ? "learned" : true;
+
+        const { data: rows } = await supabase
+          .from("user_word_progress")
+          .select("word_id")
+          .eq("user_id", userId)
+          .eq(fieldToFilter, filterValue);
+
+        const ids = (rows ?? []).map((r: any) => r.word_id);
+
+        if (ids.length === 0) {
+          setWords([]);
+        } else {
+          const { data: wordRows } = await supabase
+            .from("words")
+            .select("*")
+            .in("id", ids)
+            .order("order_index", { ascending: true });
+
+          setWords(await attachExamples((wordRows as any[]) ?? []));
+        }
       }
+    } catch (error) {
+      console.error("Error loading tab:", error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error loading tab:", error);
-  } finally {
-    setLoading(false);
   }
-  }
+
   async function handleNext() {
     if (!userId || words.length === 0) return;
     setAdvancing(true);
 
-    // বর্তমান ১০টা শব্দ learned হিসেবে মার্ক করা
     for (const w of words) {
       await supabase.from("user_word_progress").upsert(
         {
@@ -200,9 +226,7 @@ export default function WordsPage() {
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`text-sm px-3 py-1.5 rounded-full font-semibold ${
-                tab === t.key
-                  ? "bg-brand text-white"
-                  : "bg-white text-muted"
+                tab === t.key ? "bg-brand text-white" : "bg-white text-muted"
               }`}
             >
               {t.label}
@@ -222,8 +246,7 @@ export default function WordsPage() {
               pos={w.pos}
               phoneticBangla={w.phonetic_bangla}
               banglaMeaning={w.bangla_meaning}
-              exampleEn={w.example_en}
-              exampleBn={w.example_bn}
+              examples={w.examples}
               isBookmarked={bookmarks.has(w.id)}
               onToggleBookmark={() => toggleBookmark(w.id)}
             />
@@ -249,4 +272,4 @@ export default function WordsPage() {
       </div>
     </main>
   );
-}
+          }
