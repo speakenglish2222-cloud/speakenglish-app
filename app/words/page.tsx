@@ -39,6 +39,12 @@ export default function WordsPage() {
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
 
+  // সার্চ সংক্রান্ত state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Word[]>([]);
+  const [searching, setSearching] = useState(false);
+  const isSearching = searchQuery.trim().length > 0;
+
   useEffect(() => {
     async function initUser() {
       const deviceId = getDeviceId();
@@ -66,7 +72,40 @@ export default function WordsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, tab]);
 
-  // শব্দের id দিয়ে তাদের উদাহরণগুলো এনে জোড়া লাগানো (join ছাড়া, দুই ধাপে)
+  // সার্চ — টাইপ করার ৩০০ms পরে চলবে (debounce)
+  useEffect(() => {
+    if (!userId) return;
+
+    if (!isSearching) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      runSearch(searchQuery.trim());
+    }, 300);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, userId]);
+
+  async function runSearch(query: string) {
+    if (!query) return;
+    setSearching(true);
+
+    const { data } = await supabase
+      .from("words")
+      .select("*")
+      .eq("level", cefrLevel)
+      .or(`word.ilike.%${query}%,bangla_meaning.ilike.%${query}%`)
+      .order("word", { ascending: true })
+      .limit(30);
+
+    const withExamples = await attachExamples((data as any[]) ?? []);
+    setSearchResults(withExamples);
+    setSearching(false);
+  }
+
   async function attachExamples(
     wordList: Omit<Word, "examples">[]
   ): Promise<Word[]> {
@@ -207,7 +246,7 @@ export default function WordsPage() {
       { onConflict: "user_id,word_id" }
     );
 
-    if (tab === "bookmarked") loadTab();
+    if (tab === "bookmarked" && !isSearching) loadTab();
   }
 
   const tabs: { key: Tab; label: string }[] = [
@@ -216,43 +255,66 @@ export default function WordsPage() {
     { key: "bookmarked", label: "বুকমার্ক" },
   ];
 
+  const displayedWords = isSearching ? searchResults : words;
+
   return (
     <main className="pt-8">
       <div className="px-5 mb-3">
-        <h1 className="text-xl font-bold mb-3">শব্দ</h1>
-        <div className="flex gap-2">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`text-sm px-3 py-1.5 rounded-full font-semibold ${
-                tab === t.key ? "bg-brand text-white" : "bg-white text-muted"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h1 className="text-xl font-bold shrink-0">শব্দ</h1>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="🔍 শব্দ বা অর্থ খুঁজুন..."
+            className="flex-1 min-w-0 bg-white rounded-full px-4 py-2 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand"
+          />
         </div>
+
+        {!isSearching && (
+          <div className="flex gap-2">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`text-sm px-3 py-1.5 rounded-full font-semibold ${
+                  tab === t.key ? "bg-brand text-white" : "bg-white text-muted"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="px-5 pb-6 flex flex-col gap-4">
-        {loading && <p className="text-muted">লোড হচ্ছে...</p>}
+        {isSearching && searching && (
+          <p className="text-muted">খোঁজা হচ্ছে...</p>
+        )}
 
-        {!loading &&
-          words.map((w) => (
-            <WordCard
-              key={w.id}
-              word={w.word}
-              pos={w.pos}
-              phoneticBangla={w.phonetic_bangla}
-              banglaMeaning={w.bangla_meaning}
-              examples={w.examples}
-              isBookmarked={bookmarks.has(w.id)}
-              onToggleBookmark={() => toggleBookmark(w.id)}
-            />
-          ))}
+        {!isSearching && loading && <p className="text-muted">লোড হচ্ছে...</p>}
 
-        {!loading && words.length === 0 && (
+        {displayedWords.map((w) => (
+          <WordCard
+            key={w.id}
+            word={w.word}
+            pos={w.pos}
+            phoneticBangla={w.phonetic_bangla}
+            banglaMeaning={w.bangla_meaning}
+            examples={w.examples}
+            isBookmarked={bookmarks.has(w.id)}
+            onToggleBookmark={() => toggleBookmark(w.id)}
+          />
+        ))}
+
+        {isSearching && !searching && searchResults.length === 0 && (
+          <p className="text-muted text-center mt-10">
+            কোনো শব্দ পাওয়া যায়নি।
+          </p>
+        )}
+
+        {!isSearching && !loading && words.length === 0 && (
           <p className="text-muted text-center mt-10">
             {tab === "new"
               ? "এই লেভেলের সব শব্দ শেখা হয়ে গেছে!"
@@ -260,7 +322,7 @@ export default function WordsPage() {
           </p>
         )}
 
-        {tab === "new" && !loading && words.length > 0 && (
+        {!isSearching && tab === "new" && !loading && words.length > 0 && (
           <button
             onClick={handleNext}
             disabled={advancing}
@@ -272,4 +334,4 @@ export default function WordsPage() {
       </div>
     </main>
   );
-          }
+}
