@@ -32,7 +32,7 @@ const PAGE_SIZE = 10;
 const DAILY_PAGE_LIMIT = 5; // ৫টা পেজ = ৫০টা শব্দ প্রতিদিন
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  return new Date().toISOString().slice(0, 10);
 }
 
 export default function WordsPage() {
@@ -69,7 +69,6 @@ export default function WordsPage() {
 
         const today = todayStr();
         if (user.daily_word_date !== today) {
-          // নতুন দিন — কাউন্টার রিসেট
           await supabase
             .from("users")
             .update({ daily_word_date: today, daily_pages_used: 0 })
@@ -240,7 +239,7 @@ export default function WordsPage() {
     await loadTab();
     setAdvancing(false);
 
-    // 💡 সমাধান ২: নতুন শব্দ লোড হওয়ার সাথে সাথে স্মুথভাবে স্ক্রিনের একদম উপরে নিয়ে যাওয়া
+    // ⚡ কোনো অ্যানিমেশন ছাড়াই পলকে পেজ টপে নিয়ে যাওয়া
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
@@ -286,7 +285,7 @@ export default function WordsPage() {
 
   return (
     <main className="pt-6 pb-20 min-h-screen bg-slate-50">
-      {/* Header & Controls */}
+      {/* Header & Navigation */}
       <div className="px-5 mb-4 sticky top-0 bg-slate-50/90 backdrop-blur-md z-10 pt-2 pb-3">
         <div className="flex items-center justify-between gap-3 mb-3">
           <h1 className="text-2xl font-black text-slate-800 shrink-0">শব্দ</h1>
@@ -299,7 +298,6 @@ export default function WordsPage() {
           />
         </div>
 
-        {/* 🎨 সমাধান ১: কালারফুল ট্যাব নেভিগেশন */}
         {!isSearching && (
           <div className="flex gap-2 bg-slate-200/60 p-1 rounded-full">
             {tabs.map((t) => (
@@ -376,7 +374,6 @@ export default function WordsPage() {
           </p>
         )}
 
-        {/* 🎨 কালারফুল ও মডার্ন পরবর্তীতে বাটন */}
         {!isSearching &&
           tab === "new" &&
           !loading &&
