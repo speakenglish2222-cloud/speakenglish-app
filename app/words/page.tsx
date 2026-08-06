@@ -239,12 +239,8 @@ export default function WordsPage() {
     await loadTab();
     setAdvancing(false);
 
-    // ⚡ DOM সম্পূর্ণ আপডেট হওয়ার পর ১০০০% সিওর ইনস্ট্যান্ট স্ক্রল টপ হওয়ার ট্রিক
-    setTimeout(() => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }, 0);
+    // ⚡ কোনো অ্যানিমেশন ছাড়াই পলকে পেজ টপে নিয়ে যাওয়া
+    window.scrollTo({ top: 0, behavior: "instant" });
   }
 
   async function toggleBookmark(wordId: number) {
@@ -332,7 +328,7 @@ export default function WordsPage() {
         )}
       </div>
 
-      <div key={dailyPagesUsed} className="px-5 flex flex-col gap-4">
+      <div className="px-5 flex flex-col gap-4">
         {isSearching && searching && (
           <p className="text-slate-400 text-center py-6">খোঁজা হচ্ছে...</p>
         )}
