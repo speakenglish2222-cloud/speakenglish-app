@@ -208,7 +208,6 @@ export default function WordsPage() {
 
     const today = todayStr();
 
-    // এই ১০টা শব্দ learned মার্ক করা
     for (const w of words) {
       await supabase.from("user_word_progress").upsert(
         {
@@ -222,7 +221,6 @@ export default function WordsPage() {
       );
     }
 
-    // আজকের প্র্যাকটিসের জন্য এই শব্দগুলো user_daily_words এ সেভ করা
     const dailyRows = words.map((w) => ({
       user_id: userId,
       word_id: w.id,
@@ -232,7 +230,6 @@ export default function WordsPage() {
       .from("user_daily_words")
       .upsert(dailyRows, { onConflict: "user_id,word_id,shown_date" });
 
-    // দৈনিক পেজ কাউন্টার বাড়ানো
     const newCount = dailyPagesUsed + 1;
     await supabase
       .from("users")
@@ -242,6 +239,9 @@ export default function WordsPage() {
 
     await loadTab();
     setAdvancing(false);
+
+    // 💡 সমাধান ২: নতুন শব্দ লোড হওয়ার সাথে সাথে স্মুথভাবে স্ক্রিনের একদম উপরে নিয়ে যাওয়া
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function toggleBookmark(wordId: number) {
@@ -285,27 +285,31 @@ export default function WordsPage() {
   const displayedWords = isSearching ? searchResults : words;
 
   return (
-    <main className="pt-8">
-      <div className="px-5 mb-3">
+    <main className="pt-6 pb-20 min-h-screen bg-slate-50">
+      {/* Header & Controls */}
+      <div className="px-5 mb-4 sticky top-0 bg-slate-50/90 backdrop-blur-md z-10 pt-2 pb-3">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h1 className="text-xl font-bold shrink-0">শব্দ</h1>
+          <h1 className="text-2xl font-black text-slate-800 shrink-0">শব্দ</h1>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="🔍 শব্দ বা অর্থ খুঁজুন..."
-            className="flex-1 min-w-0 bg-white rounded-full px-4 py-2 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand"
+            className="flex-1 min-w-0 bg-white shadow-sm rounded-full px-4 py-2 text-sm border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
+        {/* 🎨 সমাধান ১: কালারফুল ট্যাব নেভিগেশন */}
         {!isSearching && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 bg-slate-200/60 p-1 rounded-full">
             {tabs.map((t) => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`text-sm px-3 py-1.5 rounded-full font-semibold ${
-                  tab === t.key ? "bg-brand text-white" : "bg-white text-muted"
+                className={`flex-1 text-xs py-2 rounded-full font-bold transition-all duration-300 ${
+                  tab === t.key
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 {t.label}
@@ -315,20 +319,32 @@ export default function WordsPage() {
         )}
 
         {!isSearching && tab === "new" && (
-          <p className="text-xs text-muted mt-2">
-            আজকে {dailyPagesUsed}/{DAILY_PAGE_LIMIT} পেজ শেষ হয়েছে
-          </p>
+          <div className="flex items-center justify-between mt-3 px-1">
+            <span className="text-xs font-semibold text-slate-500">
+              আজকের প্রোগ্রেস:
+            </span>
+            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+              {dailyPagesUsed}/{DAILY_PAGE_LIMIT} পেজ
+            </span>
+          </div>
         )}
       </div>
 
-      <div className="px-5 pb-6 flex flex-col gap-4">
-        {isSearching && searching && <p className="text-muted">খোঁজা হচ্ছে...</p>}
-        {!isSearching && loading && <p className="text-muted">লোড হচ্ছে...</p>}
+      <div className="px-5 flex flex-col gap-4">
+        {isSearching && searching && (
+          <p className="text-slate-400 text-center py-6">খোঁজা হচ্ছে...</p>
+        )}
+        {!isSearching && loading && (
+          <p className="text-slate-400 text-center py-6">শব্দ লোড হচ্ছে...</p>
+        )}
 
         {!isSearching && tab === "new" && dailyLimitReached && !loading && (
-          <div className="bg-white rounded-card p-5 text-center">
-            <p className="font-semibold mb-1">আজকের ৫০টা শব্দ শেষ! 🎉</p>
-            <p className="text-muted text-sm">
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-3xl p-6 text-center shadow-sm">
+            <p className="text-3xl mb-2">🎉</p>
+            <p className="font-extrabold text-emerald-900 text-base mb-1">
+              আজকের ৫০টা শব্দ শেখা শেষ!
+            </p>
+            <p className="text-emerald-700/80 text-xs">
               আগামীকাল আবার নতুন শব্দ শেখা যাবে।
             </p>
           </div>
@@ -349,17 +365,18 @@ export default function WordsPage() {
           ))}
 
         {isSearching && !searching && searchResults.length === 0 && (
-          <p className="text-muted text-center mt-10">কোনো শব্দ পাওয়া যায়নি।</p>
+          <p className="text-slate-400 text-center py-10">কোনো শব্দ পাওয়া যায়নি।</p>
         )}
 
         {!isSearching && !loading && !dailyLimitReached && words.length === 0 && (
-          <p className="text-muted text-center mt-10">
+          <p className="text-slate-400 text-center py-10">
             {tab === "new"
               ? "এই লেভেলের সব শব্দ শেখা হয়ে গেছে!"
               : "এখানে এখনো কিছু নেই।"}
           </p>
         )}
 
+        {/* 🎨 কালারফুল ও মডার্ন পরবর্তীতে বাটন */}
         {!isSearching &&
           tab === "new" &&
           !loading &&
@@ -368,13 +385,12 @@ export default function WordsPage() {
             <button
               onClick={handleNext}
               disabled={advancing}
-              className="bg-brand text-white font-semibold rounded-card py-3 mt-2 mb-20"
+              className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-green-500 text-white font-extrabold rounded-2xl py-3.5 mt-2 shadow-lg shadow-emerald-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
-              {advancing ? "..." : "পরবর্তী ➜"}
+              {advancing ? "লোড হচ্ছে..." : "পরবর্তী ➔"}
             </button>
           )}
       </div>
     </main>
   );
 }
-  
