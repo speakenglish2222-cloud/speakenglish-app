@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getDeviceId } from "@/lib/device";
+import TodayPractice from "@/components/TodayPractice";
 
 type UserRow = {
   id: string;
@@ -64,6 +65,7 @@ export default function HomePage() {
 
   return (
     <main className="p-5 pt-8">
+      {/* Hero */}
       <section className="bg-brand text-white rounded-card p-6 mb-5">
         <p className="text-sm opacity-80">স্বাগতম</p>
         <h1 className="text-2xl font-bold mb-3">Hi, শিক্ষার্থী 👋</h1>
@@ -77,6 +79,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Challenge progress */}
       <section className="bg-white rounded-card p-5 shadow-sm mb-5">
         <h2 className="font-bold mb-1">৬০ দিনের চ্যালেঞ্জ</h2>
         <p className="text-muted text-sm mb-3">
@@ -93,6 +96,10 @@ export default function HomePage() {
         </p>
       </section>
 
+      {/* আজকের প্র্যাকটিস */}
+      {!loading && user && <TodayPractice userId={user.id} />}
+
+      {/* Quick links */}
       <section className="grid grid-cols-2 gap-4">
         <a
           href="/words"
