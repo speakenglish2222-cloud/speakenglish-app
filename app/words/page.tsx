@@ -241,7 +241,7 @@ export default function WordsPage() {
     setAdvancing(false);
 
     // 💡 সমাধান ২: নতুন শব্দ লোড হওয়ার সাথে সাথে স্মুথভাবে স্ক্রিনের একদম উপরে নিয়ে যাওয়া
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "instant" });
   }
 
   async function toggleBookmark(wordId: number) {
