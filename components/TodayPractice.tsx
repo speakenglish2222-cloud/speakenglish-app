@@ -15,7 +15,6 @@ type PracticeWord = {
   examples: Example[];
 };
 
-// অ্যারে এলোমেলো (Shuffle) করার হেলপার ফাংশন
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -33,7 +32,8 @@ export default function TodayPractice({ userId }: { userId: string }) {
   const [options, setOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ভুল হওয়া প্রশ্ন এবং রিভিশন স্টেট
+  // মোডাল এবং রিভিশন স্টেট
+  const [showWrongModal, setShowWrongModal] = useState(false);
   const [wrongQuestions, setWrongQuestions] = useState<PracticeWord[]>([]);
   const [isReviewPhase, setIsReviewPhase] = useState(false);
 
@@ -41,7 +41,6 @@ export default function TodayPractice({ userId }: { userId: string }) {
     async function fetchDailyWords() {
       const today = new Date().toISOString().slice(0, 10);
 
-      // ১. আজকের পড়া শব্দগুলো আনা
       const { data: dailyRows } = await supabase
         .from("user_daily_words")
         .select("word_id")
@@ -55,13 +54,11 @@ export default function TodayPractice({ userId }: { userId: string }) {
         return;
       }
 
-      // ২. শব্দের বিস্তারিত তথ্য আনা
       const { data: wordRows } = await supabase
         .from("words")
         .select("id, word, bangla_meaning")
         .in("id", wordIds);
 
-      // ৩. অপশন তৈরির জন্য ব্যাকআপ হিসেবে অন্যান্য শব্দ আনা
       const { data: randomRows } = await supabase
         .from("words")
         .select("bangla_meaning")
@@ -69,7 +66,6 @@ export default function TodayPractice({ userId }: { userId: string }) {
 
       const meanings = (randomRows ?? []).map((r: any) => r.bangla_meaning);
 
-      // ৪. ৩টি করে উদাহরণ বাক্য আনা (word_examples টেবিল থেকে)
       const { data: exampleRows } = await supabase
         .from("word_examples")
         .select("word_id, example_en, example_bn, order_index")
@@ -102,7 +98,6 @@ export default function TodayPractice({ userId }: { userId: string }) {
 
   const currentWord = words[currentIndex];
 
-  // অপশন তৈরি
   useEffect(() => {
     if (words.length > 0 && currentWord) {
       const wrongOptions = allMeanings
@@ -113,11 +108,12 @@ export default function TodayPractice({ userId }: { userId: string }) {
       const combined = shuffle([currentWord.bangla_meaning, ...wrongOptions]);
       setOptions(combined);
       setSelectedAnswer(null);
+      setShowWrongModal(false);
     }
   }, [currentIndex, words, allMeanings]);
 
-  // ভয়েস উচ্চারণ
-  const speakWord = (text: string) => {
+  // ভয়েস উচ্চারণ ফাংশন
+  const speakText = (text: string) => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
@@ -127,7 +123,6 @@ export default function TodayPractice({ userId }: { userId: string }) {
     }
   };
 
-  // উত্তর সিলেক্ট করার লজিক
   function handleSelect(option: string) {
     if (selectedAnswer !== null || !currentWord) return;
     setSelectedAnswer(option);
@@ -135,33 +130,33 @@ export default function TodayPractice({ userId }: { userId: string }) {
     const isCorrect = option === currentWord.bangla_meaning;
 
     if (isCorrect) {
-      // সঠিক হলে ১.৫ সেকেন্ড পর পরবর্তী প্রশ্ন
+      // সঠিক হলে ১.২ সেকেন্ডে পরের প্রশ্নে চলে যাবে
       setTimeout(() => {
         goToNextQuestion();
-      }, 1500);
+      }, 1200);
     } else {
-      // ভুল হলে ভয়েস বাজবে এবং ভুল প্রশ্ন সেভ হবে
-      speakWord(currentWord.word);
+      // ভুল হলে অডিও বাজবে এবং বটম শীট মোডাল পপ-আপ হবে
+      speakText(currentWord.word);
       if (!wrongQuestions.some((q) => q.id === currentWord.id)) {
         setWrongQuestions((prev) => [...prev, currentWord]);
       }
+      setTimeout(() => {
+        setShowWrongModal(true);
+      }, 400);
     }
   }
 
   function goToNextQuestion() {
+    setShowWrongModal(false);
     if (currentIndex + 1 < words.length) {
       setCurrentIndex((prev) => prev + 1);
-      setSelectedAnswer(null);
     } else {
-      // যদি ভুল প্রশ্ন থাকে, তবে সেগুলো আবার রিভিশন করাবে
       if (wrongQuestions.length > 0) {
         setWords(wrongQuestions);
         setWrongQuestions([]);
         setCurrentIndex(0);
-        setSelectedAnswer(null);
         setIsReviewPhase(true);
       } else {
-        // সব সঠিক হলে পরবর্তী ইনডেক্স দিয়ে সম্পন্ন দেখানো
         setCurrentIndex((prev) => prev + 1);
       }
     }
@@ -190,7 +185,7 @@ export default function TodayPractice({ userId }: { userId: string }) {
   const isCompleted = currentIndex >= words.length;
 
   return (
-    <div className="bg-gradient-to-b from-violet-500/5 via-indigo-500/5 to-white rounded-3xl p-6 shadow-md shadow-indigo-100/50 border border-indigo-100/60">
+    <div className="relative bg-gradient-to-b from-violet-500/5 via-indigo-500/5 to-white rounded-3xl p-6 shadow-md shadow-indigo-100/50 border border-indigo-100/60 overflow-hidden">
       {/* Quiz Header */}
       <div className="flex items-center justify-between mb-4">
         <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
@@ -201,7 +196,7 @@ export default function TodayPractice({ userId }: { userId: string }) {
         </span>
       </div>
 
-      {/* রিভিশন অ্যালার্ট */}
+      {/* রিভিশন মোড নোটিশ */}
       {isReviewPhase && !isCompleted && (
         <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-2 rounded-xl text-center">
           ⚠️ ভুল হওয়া প্রশ্নগুলো পুনরায় প্র্যাকটিস করানো হচ্ছে!
@@ -212,7 +207,12 @@ export default function TodayPractice({ userId }: { userId: string }) {
         <>
           {/* Target Word Display */}
           <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 text-white rounded-2xl p-6 text-center shadow-lg shadow-indigo-500/20 mb-5 relative overflow-hidden">
-            <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full blur-xl" />
+            <button
+              onClick={() => speakText(currentWord.word)}
+              className="absolute right-3 top-3 bg-white/20 hover:bg-white/30 backdrop-blur-md p-2 rounded-full text-white text-xs transition-all"
+            >
+              🔊
+            </button>
             <p className="text-xs text-indigo-200 uppercase tracking-wider mb-1 font-semibold">
               সঠিক বাংলা অর্থ কোনটি?
             </p>
@@ -250,59 +250,87 @@ export default function TodayPractice({ userId }: { userId: string }) {
             })}
           </div>
 
-          {/* 💡 ভুল হলে ৩টি উদাহরণ বাক্য প্রদর্শন ও পরবর্তী বাটন */}
-          {selectedAnswer !== null && selectedAnswer !== currentWord.bangla_meaning && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-950 rounded-2xl p-4 mt-4 transition-all animate-fadeIn">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-extrabold text-xs text-rose-700">
-                  ❌ ভুল উত্তর! সঠিক ব্যাখ্যা ও উদাহরণ:
-                </p>
+          {/* 🌟 ডাইনামিক প্রফেশনাল বটম শীট মোডাল (Popup) */}
+          {showWrongModal && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-sm transition-all duration-300">
+              <div className="w-full max-w-md bg-white rounded-t-3xl p-6 shadow-2xl border-t border-slate-100 transform transition-transform animate-in slide-in-from-bottom duration-300">
+                
+                {/* Header Section */}
+                <div className="flex items-center justify-between border-b pb-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-sm">
+                      ✕
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-800 text-base">ভুল উত্তর!</h4>
+                      <p className="text-[11px] text-slate-400">নিচে সঠিক ব্যাখ্যা ও উদাহরণ দেওয়া হলো</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => speakText(currentWord.word)}
+                    className="bg-slate-100 active:bg-slate-200 p-2 rounded-full text-slate-700 text-xs flex items-center gap-1 font-semibold"
+                  >
+                    🔊 উচ্চারণ
+                  </button>
+                </div>
+
+                {/* Correct Meaning Badge */}
+                <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3 mb-4 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500">শব্দ: <b className="text-slate-800">{currentWord.word}</b></span>
+                  <span className="text-xs font-bold text-indigo-700 bg-white px-3 py-1 rounded-xl shadow-sm">
+                    অর্থ: {currentWord.bangla_meaning}
+                  </span>
+                </div>
+
+                {/* 3 Examples List */}
+                {currentWord.examples.length > 0 && (
+                  <div className="space-y-2 mb-6 max-h-48 overflow-y-auto pr-1">
+                    <p className="text-xs font-extrabold text-slate-700 flex items-center gap-1">
+                      💡 উদাহরণ বাক্যসমূহ ({currentWord.examples.length}টি):
+                    </p>
+                    {currentWord.examples.slice(0, 3).map((ex, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-start justify-between gap-2"
+                      >
+                        <div>
+                          <p className="text-xs font-bold text-slate-800 leading-snug">
+                            {idx + 1}. {ex.example_en}
+                          </p>
+                          <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                            👉 {ex.example_bn}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => speakText(ex.example_en)}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 p-1 bg-white rounded-lg shadow-sm border border-slate-100"
+                          title="বাক্য শুনুন"
+                        >
+                          🔊
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Continue Button */}
                 <button
-                  onClick={() => speakWord(currentWord.word)}
-                  className="bg-white p-1.5 rounded-full shadow-sm text-xs"
-                  title="উচ্চারণ শুনুন"
+                  onClick={goToNextQuestion}
+                  className="w-full py-3.5 bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white font-extrabold rounded-2xl text-sm shadow-lg shadow-indigo-500/25 active:scale-[0.98] transition-all"
                 >
-                  🔊
+                  পরবর্তী প্রশ্ন ➔
                 </button>
               </div>
-
-              <p className="text-xs font-bold mb-2">
-                সঠিক অর্থ: <span className="text-indigo-600">{currentWord.bangla_meaning}</span>
-              </p>
-
-              {/* ৩টি উদাহরণ বাক্য */}
-              {currentWord.examples.length > 0 && (
-                <div className="flex flex-col gap-1.5 mt-2">
-                  <p className="text-[11px] font-bold text-slate-500">উদাহরণ বাক্যসমূহ (৩টি):</p>
-                  {currentWord.examples.slice(0, 3).map((ex, idx) => (
-                    <div key={idx} className="bg-white/90 p-2.5 rounded-xl border border-rose-100">
-                      <p className="text-xs font-semibold text-slate-800">
-                        {idx + 1}. {ex.example_en}
-                      </p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        👉 {ex.example_bn}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <button
-                onClick={goToNextQuestion}
-                className="w-full font-bold py-3 rounded-xl mt-3 text-white text-xs bg-rose-600 hover:bg-rose-700 shadow-md transition-all"
-              >
-                পরবর্তী প্রশ্ন ➔
-              </button>
             </div>
           )}
         </>
       ) : (
-        /* কুইজ শেষ হওয়ার বার্তা */
+        /* Quiz Completion View */
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-bold p-6 rounded-2xl">
           <p className="text-3xl mb-2">🎉</p>
           <p className="text-lg">দারুণ! আজকের কুইজ সম্পন্ন হয়েছে!</p>
           <p className="text-xs font-normal text-emerald-600 mt-1">
-            ভুল হওয়া প্রশ্নগুলোও আপনি সঠিকভাবে সমাধান করেছেন।
+            ভুল হওয়া প্রশ্নগুলোও আপনি সফলভাবে রিভিশন করেছেন।
           </p>
         </div>
       )}
