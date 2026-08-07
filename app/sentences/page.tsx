@@ -86,12 +86,12 @@ export default function SentencesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/20 to-white p-5 pt-8">
+      <main className="min-h-screen bg-gradient-to-b from-orange-50/30 via-amber-50/20 to-white p-5 pt-8">
         <div className="flex flex-col gap-4 max-w-md mx-auto">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-28 bg-white/80 rounded-3xl animate-pulse border border-slate-100 shadow-sm"
+              className="h-28 bg-white/80 rounded-3xl animate-pulse border border-orange-100/60 shadow-sm"
             />
           ))}
         </div>
@@ -100,7 +100,7 @@ export default function SentencesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-violet-500/5 via-indigo-500/5 to-white pt-8 pb-28 px-4 max-w-md mx-auto">
+    <main className="min-h-screen bg-gradient-to-b from-orange-500/5 via-amber-500/5 to-white pt-8 pb-28 px-4 max-w-md mx-auto">
       {/* Header Section */}
       <div className="flex items-center justify-between mb-6 px-1">
         <div>
@@ -111,8 +111,8 @@ export default function SentencesPage() {
             দৈনন্দিন জীবনের প্রয়োজনীয় বাক্য প্যাটার্ন শিখুন
           </p>
         </div>
-        <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
-          🎯 {categories.length}টি ক্যাটাগরি
+        <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
+          💬 {categories.length}টি ক্যাটাগরি
         </span>
       </div>
 
@@ -128,7 +128,7 @@ export default function SentencesPage() {
               className={`relative overflow-hidden rounded-3xl p-5 border transition-all duration-300 ${
                 isLocked
                   ? "bg-slate-50/80 border-slate-200/60 opacity-60 shadow-none"
-                  : "bg-white border-indigo-100/80 shadow-md shadow-indigo-100/40 hover:shadow-lg hover:border-indigo-200 active:scale-[0.99]"
+                  : "bg-white border-orange-100 shadow-md shadow-orange-500/5 hover:shadow-lg hover:border-orange-200 active:scale-[0.99]"
               }`}
             >
               {/* Status Badge & Content */}
@@ -157,7 +157,7 @@ export default function SentencesPage() {
                       ✓
                     </div>
                   ) : (
-                    <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-xs shadow-md shadow-indigo-500/30">
+                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center text-xs shadow-md shadow-orange-500/30">
                       ▶
                     </div>
                   )}
@@ -166,23 +166,23 @@ export default function SentencesPage() {
 
               {/* Progress Bar (Only for Unlocked) */}
               {!isLocked && (
-                <div className="mt-4 pt-3 border-t border-slate-100/80">
+                <div className="mt-4 pt-3 border-t border-slate-100">
                   <div className="flex justify-between items-center text-[11px] font-bold mb-1.5">
                     <span className="text-slate-400">প্রোগ্রেস</span>
                     <span
                       className={
-                        isCompleted ? "text-emerald-600" : "text-indigo-600"
+                        isCompleted ? "text-emerald-600" : "text-orange-600"
                       }
                     >
                       {state.percent}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden p-0.5">
+                  <div className="w-full bg-orange-50 rounded-full h-2 overflow-hidden p-0.5 border border-orange-100/50">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         isCompleted
                           ? "bg-emerald-500"
-                          : "bg-gradient-to-r from-indigo-500 to-purple-600"
+                          : "bg-gradient-to-r from-amber-500 to-orange-500"
                       }`}
                       style={{ width: `${state.percent}%` }}
                     />
