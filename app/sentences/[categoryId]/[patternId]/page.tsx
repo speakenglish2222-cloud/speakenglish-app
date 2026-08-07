@@ -27,6 +27,7 @@ export default function PatternLearnPage() {
   const [examples, setExamples] = useState<Example[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [playingText, setPlayingText] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -59,10 +60,22 @@ export default function PatternLearnPage() {
     init();
   }, [patternId]);
 
+  // 🔊 শ্রুতিমধুর উচ্চারণের জন্য আপগ্রেডেড টেক্সট-টু-স্পিচ মেথড
   function speak(text: string) {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+    window.speechSynthesis.cancel(); // আগের কোনো সাউন্ড চলতে থাকলে তা বন্ধ করবে
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
+    utterance.rate = 0.88; // পড়ার স্পিড সামান্য ধীর করা হয়েছে যাতে শ্রুতিমধুর ও স্পষ্ট শোনায়
+    utterance.pitch = 1.0; // ন্যাচারাল টিউন
+    utterance.volume = 1.0;
+
+    utterance.onstart = () => setPlayingText(text);
+    utterance.onend = () => setPlayingText(null);
+    utterance.onerror = () => setPlayingText(null);
+
     window.speechSynthesis.speak(utterance);
   }
 
@@ -70,7 +83,6 @@ export default function PatternLearnPage() {
     if (!userId) return;
     setSaving(true);
 
-    // প্রোগ্রেস আপডেট লজিক
     await supabase.from("user_pattern_progress").upsert(
       {
         user_id: userId,
@@ -117,19 +129,19 @@ export default function PatternLearnPage() {
 
   if (loading || !pattern) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-orange-50/30 via-amber-50/20 to-white p-5 pt-8">
+      <main className="min-h-screen bg-slate-50 p-5 pt-8">
         <div className="max-w-md mx-auto space-y-4">
-          <div className="h-10 w-2/3 bg-white/80 rounded-2xl animate-pulse" />
-          <div className="h-40 bg-white/80 rounded-3xl animate-pulse border border-orange-100" />
-          <div className="h-20 bg-white/80 rounded-2xl animate-pulse border border-orange-100" />
-          <div className="h-20 bg-white/80 rounded-2xl animate-pulse border border-orange-100" />
+          <div className="h-10 w-2/3 bg-slate-200/60 rounded-2xl animate-pulse" />
+          <div className="h-40 bg-slate-200/60 rounded-3xl animate-pulse" />
+          <div className="h-20 bg-slate-200/60 rounded-2xl animate-pulse" />
+          <div className="h-20 bg-slate-200/60 rounded-2xl animate-pulse" />
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-orange-500/5 via-amber-500/5 to-white pt-6 pb-28 px-4 max-w-md mx-auto">
+    <main className="min-h-screen bg-slate-50 pt-6 pb-28 px-4 max-w-md mx-auto">
       {/* Header Section */}
       <div className="flex items-center gap-3.5 mb-6 px-1">
         <button
@@ -150,7 +162,6 @@ export default function PatternLearnPage() {
 
       {/* Main Pattern Hero Card */}
       <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl shadow-orange-500/20 mb-6 relative overflow-hidden">
-        {/* Background decorative element */}
         <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
 
         <div className="flex justify-between items-start gap-4">
@@ -162,9 +173,15 @@ export default function PatternLearnPage() {
               {pattern.pattern_en}
             </h2>
           </div>
+          
+          {/* Main Speaker Button */}
           <button
             onClick={() => speak(pattern.pattern_en)}
-            className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md hover:bg-white/30 active:scale-90 flex items-center justify-center text-xl transition-all shadow-inner flex-shrink-0"
+            className={`w-12 h-12 rounded-2xl backdrop-blur-md flex items-center justify-center text-xl transition-all shadow-md flex-shrink-0 active:scale-90 ${
+              playingText === pattern.pattern_en
+                ? "bg-white text-orange-600 animate-pulse"
+                : "bg-white/20 text-white hover:bg-white/30"
+            }`}
             title="উচ্চারণ শুনুন"
           >
             🔊
@@ -177,41 +194,49 @@ export default function PatternLearnPage() {
 
       {/* Examples Header */}
       <div className="flex items-center justify-between mb-3 px-1">
-        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
           উদাহরণ বাক্যসমূহ ({examples.length})
         </h3>
-        <span className="text-[11px] font-medium text-orange-600 bg-orange-100/80 px-2.5 py-0.5 rounded-full">
+        <span className="text-[11px] font-semibold text-orange-600 bg-orange-100/80 px-2.5 py-0.5 rounded-full">
           স্পিকারে চাপ দিয়ে শুনুন
         </span>
       </div>
 
       {/* Example Sentences List */}
       <div className="flex flex-col gap-3 mb-8">
-        {examples.map((ex, i) => (
-          <div
-            key={i}
-            className="bg-white border border-orange-100/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3.5"
-          >
-            {/* Left Side: Sentence Text */}
-            <div className="flex-1">
-              <p className="font-bold text-slate-800 text-base leading-snug">
-                {ex.example_en}
-              </p>
-              <p className="text-xs font-medium text-slate-500 mt-1 leading-relaxed">
-                {ex.example_bn}
-              </p>
-            </div>
+        {examples.map((ex, i) => {
+          const isPlaying = playingText === ex.example_en;
 
-            {/* Right Side: Speaker Button */}
-            <button
-              onClick={() => speak(ex.example_en)}
-              className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 active:scale-90 flex items-center justify-center text-base flex-shrink-0 transition-all border border-orange-100/50"
-              title="উচ্চারণ শুনুন"
+          return (
+            <div
+              key={i}
+              className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3.5"
             >
-              🔊
-            </button>
-          </div>
-        ))}
+              {/* Left Side: Sentence Text */}
+              <div className="flex-1">
+                <p className="font-bold text-slate-800 text-base leading-snug">
+                  {ex.example_en}
+                </p>
+                <p className="text-xs font-medium text-slate-500 mt-1 leading-relaxed">
+                  {ex.example_bn}
+                </p>
+              </div>
+
+              {/* Right Side: Word-Style Speaker Button */}
+              <button
+                onClick={() => speak(ex.example_en)}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-base flex-shrink-0 transition-all active:scale-90 border ${
+                  isPlaying
+                    ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/30 scale-105"
+                    : "bg-slate-50 text-orange-600 border-slate-200/80 hover:bg-orange-50 hover:border-orange-200"
+                }`}
+                title="উচ্চারণ শুনুন"
+              >
+                🔊
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* Bottom Action Button */}
