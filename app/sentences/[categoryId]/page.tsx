@@ -87,22 +87,41 @@ export default function PatternListPage() {
 
   if (loading) {
     return (
-      <main className="p-5 pt-8">
-        <p className="text-muted">লোড হচ্ছে...</p>
+      <main className="min-h-screen bg-gradient-to-b from-orange-50/30 via-amber-50/20 to-white p-5 pt-8">
+        <div className="flex flex-col gap-4 max-w-md mx-auto">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-20 bg-white/80 rounded-2xl animate-pulse border border-orange-100/60 shadow-sm"
+            />
+          ))}
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="pt-8 pb-24">
-      <div className="px-5 mb-4 flex items-center gap-3">
-        <button onClick={() => router.push("/sentences")} className="text-xl">
+    <main className="min-h-screen bg-gradient-to-b from-orange-500/5 via-amber-500/5 to-white pt-6 pb-28 px-4 max-w-md mx-auto">
+      {/* Header Section with Back Button */}
+      <div className="flex items-center gap-3.5 mb-6 px-1">
+        <button
+          onClick={() => router.push("/sentences")}
+          className="w-10 h-10 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-700 text-lg hover:bg-slate-50 active:scale-95 transition-all flex-shrink-0"
+        >
           ←
         </button>
-        <h1 className="text-lg font-bold">{categoryTitle}</h1>
+        <div className="flex-1">
+          <h1 className="text-xl font-extrabold text-slate-800 tracking-tight leading-snug">
+            {categoryTitle || "বাক্যের প্যাটার্ন"}
+          </h1>
+          <p className="text-xs font-medium text-slate-500 mt-0.5">
+            পছন্দের প্যাটার্ন নির্বাচন করে চর্চা শুরু করুন
+          </p>
+        </div>
       </div>
 
-      <div className="px-5 flex flex-col gap-4">
+      {/* Pattern Cards List */}
+      <div className="flex flex-col gap-3">
         {patterns.map((p, index) => {
           const status = getStatus(index, p.id);
           const isLocked = status === "locked";
@@ -110,17 +129,43 @@ export default function PatternListPage() {
 
           const card = (
             <div
-              className={`bg-white rounded-card p-5 shadow-sm flex justify-between items-center ${
-                isLocked ? "opacity-60" : ""
+              className={`relative overflow-hidden rounded-2xl p-4 border transition-all duration-300 flex items-center justify-between gap-3 ${
+                isLocked
+                  ? "bg-slate-50/80 border-slate-200/60 opacity-60 shadow-none"
+                  : isCompleted
+                  ? "bg-white border-emerald-100 shadow-sm hover:border-emerald-200 active:scale-[0.99]"
+                  : "bg-white border-orange-100 shadow-md shadow-orange-500/5 hover:shadow-lg hover:border-orange-200 active:scale-[0.99]"
               }`}
             >
-              <div>
-                <h3 className="font-bold">{p.pattern_en}</h3>
-                <p className="text-muted text-sm mt-1">{p.pattern_bn}</p>
+              <div className="flex-1">
+                <h3
+                  className={`font-bold text-base tracking-wide ${
+                    isLocked ? "text-slate-500" : "text-slate-800"
+                  }`}
+                >
+                  {p.pattern_en}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                  {p.pattern_bn}
+                </p>
               </div>
-              <span className="text-xl ml-3">
-                {isLocked ? "🔒" : isCompleted ? "✅" : "▶️"}
-              </span>
+
+              {/* Status Icon Indicator */}
+              <div className="flex-shrink-0">
+                {isLocked ? (
+                  <div className="w-8 h-8 rounded-xl bg-slate-200/60 text-slate-400 flex items-center justify-center text-xs">
+                    🔒
+                  </div>
+                ) : isCompleted ? (
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shadow-sm shadow-emerald-500/30">
+                    ✓
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center text-xs shadow-md shadow-orange-500/30">
+                    ▶
+                  </div>
+                )}
+              </div>
             </div>
           );
 
