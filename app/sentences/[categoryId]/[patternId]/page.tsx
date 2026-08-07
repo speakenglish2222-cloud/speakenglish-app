@@ -70,7 +70,7 @@ export default function PatternLearnPage() {
     if (!userId) return;
     setSaving(true);
 
-    // এখন প্র্যাকটিস কুইজ তৈরি হয়নি, তাই আপাতত "বাক্য শেখা" শেষ করলেই প্যাটার্ন completed
+    // প্রোগ্রেস আপডেট লজিক
     await supabase.from("user_pattern_progress").upsert(
       {
         user_id: userId,
@@ -81,7 +81,6 @@ export default function PatternLearnPage() {
       { onConflict: "user_id,pattern_id" }
     );
 
-    // ক্যাটাগরির সামগ্রিক প্রোগ্রেস আপডেট করা
     const { data: allPatterns } = await supabase
       .from("sentence_patterns")
       .select("id")
@@ -118,65 +117,118 @@ export default function PatternLearnPage() {
 
   if (loading || !pattern) {
     return (
-      <main className="p-5 pt-8">
-        <p className="text-muted">লোড হচ্ছে...</p>
+      <main className="min-h-screen bg-gradient-to-b from-orange-50/30 via-amber-50/20 to-white p-5 pt-8">
+        <div className="max-w-md mx-auto space-y-4">
+          <div className="h-10 w-2/3 bg-white/80 rounded-2xl animate-pulse" />
+          <div className="h-40 bg-white/80 rounded-3xl animate-pulse border border-orange-100" />
+          <div className="h-20 bg-white/80 rounded-2xl animate-pulse border border-orange-100" />
+          <div className="h-20 bg-white/80 rounded-2xl animate-pulse border border-orange-100" />
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="pt-8 pb-24">
-      <div className="px-5 mb-4 flex items-center gap-3">
+    <main className="min-h-screen bg-gradient-to-b from-orange-500/5 via-amber-500/5 to-white pt-6 pb-28 px-4 max-w-md mx-auto">
+      {/* Header Section */}
+      <div className="flex items-center gap-3.5 mb-6 px-1">
         <button
           onClick={() => router.push(`/sentences/${categoryId}`)}
-          className="text-xl"
+          className="w-10 h-10 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-700 text-lg hover:bg-slate-50 active:scale-95 transition-all flex-shrink-0"
         >
           ←
         </button>
-        <h1 className="text-lg font-bold">বাক্য শেখো</h1>
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">
+            বাক্য শেখো
+          </h1>
+          <p className="text-xs font-medium text-slate-500 mt-0.5">
+            প্যাটার্নটি ভালোভাবে দেখে নিন ও উচ্চারণ শুনুন
+          </p>
+        </div>
       </div>
 
-      <div className="px-5">
-        <div className="bg-brand text-white rounded-card p-5 mb-5">
-          <div className="flex justify-between items-start">
-            <h2 className="text-xl font-bold">{pattern.pattern_en}</h2>
+      {/* Main Pattern Hero Card */}
+      <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl shadow-orange-500/20 mb-6 relative overflow-hidden">
+        {/* Background decorative element */}
+        <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
+
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-1">
+            <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white text-[10px] font-bold tracking-wider uppercase mb-2">
+              মূল প্যাটার্ন
+            </span>
+            <h2 className="text-2xl font-black tracking-wide leading-tight">
+              {pattern.pattern_en}
+            </h2>
+          </div>
+          <button
+            onClick={() => speak(pattern.pattern_en)}
+            className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md hover:bg-white/30 active:scale-90 flex items-center justify-center text-xl transition-all shadow-inner flex-shrink-0"
+            title="উচ্চারণ শুনুন"
+          >
+            🔊
+          </button>
+        </div>
+        <p className="text-orange-50 text-sm font-medium mt-3 border-t border-white/20 pt-3 leading-relaxed">
+          {pattern.pattern_bn}
+        </p>
+      </div>
+
+      {/* Examples Header */}
+      <div className="flex items-center justify-between mb-3 px-1">
+        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+          উদাহরণ বাক্যসমূহ ({examples.length})
+        </h3>
+        <span className="text-[11px] font-medium text-orange-600 bg-orange-100/80 px-2.5 py-0.5 rounded-full">
+          স্পিকারে চাপ দিয়ে শুনুন
+        </span>
+      </div>
+
+      {/* Example Sentences List */}
+      <div className="flex flex-col gap-3 mb-8">
+        {examples.map((ex, i) => (
+          <div
+            key={i}
+            className="bg-white border border-orange-100/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3.5"
+          >
+            {/* Left Side: Sentence Text */}
+            <div className="flex-1">
+              <p className="font-bold text-slate-800 text-base leading-snug">
+                {ex.example_en}
+              </p>
+              <p className="text-xs font-medium text-slate-500 mt-1 leading-relaxed">
+                {ex.example_bn}
+              </p>
+            </div>
+
+            {/* Right Side: Speaker Button */}
             <button
-              onClick={() => speak(pattern.pattern_en)}
-              className="text-lg ml-2"
+              onClick={() => speak(ex.example_en)}
+              className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 active:scale-90 flex items-center justify-center text-base flex-shrink-0 transition-all border border-orange-100/50"
+              title="উচ্চারণ শুনুন"
             >
               🔊
             </button>
           </div>
-          <p className="text-white/90 mt-2">{pattern.pattern_bn}</p>
-        </div>
-
-        <p className="text-muted text-sm mb-3">উদাহরণ বাক্য</p>
-
-        <div className="flex flex-col gap-3 mb-6">
-          {examples.map((ex, i) => (
-            <div key={i} className="bg-white rounded-card p-4 shadow-sm flex gap-3">
-              <button
-                onClick={() => speak(ex.example_en)}
-                className="text-brand text-lg mt-0.5"
-              >
-                🔊
-              </button>
-              <div>
-                <p className="font-semibold">{ex.example_en}</p>
-                <p className="text-muted text-sm mt-1">{ex.example_bn}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={handleContinue}
-          disabled={saving}
-          className="w-full bg-brand text-white font-semibold rounded-card py-3"
-        >
-          {saving ? "..." : "এগিয়ে যাও ➜"}
-        </button>
+        ))}
       </div>
+
+      {/* Bottom Action Button */}
+      <button
+        onClick={handleContinue}
+        disabled={saving}
+        className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+      >
+        {saving ? (
+          <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        ) : (
+          <>
+            <span>পরবর্তী ধাপে যান</span>
+            <span className="text-lg">➜</span>
+          </>
+        )}
+      </button>
     </main>
   );
 }
