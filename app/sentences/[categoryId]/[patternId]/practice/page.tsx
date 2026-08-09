@@ -70,6 +70,7 @@ export default function PracticePage() {
         .select("*")
         .eq("pattern_id", patternId)
         .order("order_index", { ascending: true });
+
       setQuestions((qRows as Question[]) ?? []);
       setLoading(false);
 
@@ -97,7 +98,6 @@ export default function PracticePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, current]);
 
-  // 🔊 শ্রুতিমধুর উচ্চারণের জন্য স্পিকার মেথড
   function speak(text: string) {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
@@ -223,7 +223,7 @@ export default function PracticePage() {
     );
   }
 
-  // 🎉 কুইজ সম্পন্ন হলে অভিনন্দন স্ক্রিন
+  // 🎉 কুইজ সম্পন্ন হলে
   if (finished) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -271,7 +271,7 @@ export default function PracticePage() {
 
   return (
     <main className="min-h-screen bg-slate-50 pt-6 pb-28 px-4 max-w-md mx-auto">
-      {/* Top Navigation & Progress */}
+      {/* Navigation & Progress */}
       <div className="flex items-center gap-3.5 mb-4 px-1">
         <button
           onClick={() => router.back()}
@@ -288,7 +288,6 @@ export default function PracticePage() {
               {progressPercent}%
             </span>
           </div>
-          {/* Animated Progress Bar */}
           <div className="h-2 w-full bg-slate-200/80 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300 rounded-full"
@@ -307,7 +306,7 @@ export default function PracticePage() {
         </h1>
       </div>
 
-      {/* Type 1: Pronunciation Exercise */}
+      {/* Question Type 1: Pronunciation */}
       {current.type === "pronunciation" && (
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl shadow-orange-500/20 flex items-center justify-between gap-4">
@@ -365,7 +364,7 @@ export default function PracticePage() {
         </div>
       )}
 
-      {/* Type 2: Recall Exercise */}
+      {/* Question Type 2: Recall */}
       {current.type === "recall" && (
         <div className="space-y-5">
           <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
@@ -436,7 +435,7 @@ export default function PracticePage() {
         </div>
       )}
 
-      {/* Type 3: Word-bank / Fill in the Blank Exercise */}
+      {/* Question Type 3: Fill Blank / Word Bank */}
       {current.type === "fill_blank" && (
         <div className="space-y-4">
           <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm">
@@ -448,7 +447,6 @@ export default function PracticePage() {
             </p>
           </div>
 
-          {/* Answer Box */}
           <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-4 min-h-[90px] flex flex-wrap gap-2 items-center">
             {answerWords.length === 0 ? (
               <p className="text-xs font-semibold text-slate-400 w-full text-center">
@@ -468,7 +466,6 @@ export default function PracticePage() {
             )}
           </div>
 
-          {/* Word Bank Buttons */}
           <div className="flex flex-wrap gap-2 justify-center py-2">
             {bankWords.map((w, i) => (
               <button
@@ -493,7 +490,7 @@ export default function PracticePage() {
         </div>
       )}
 
-      {/* Result Status & Next Button */}
+      {/* Result Card & Next Button */}
       {result && (
         <div className="mt-6 space-y-3">
           <div
