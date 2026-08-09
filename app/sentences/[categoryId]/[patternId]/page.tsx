@@ -64,12 +64,12 @@ export default function PatternLearnPage() {
   function speak(text: string) {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
-    window.speechSynthesis.cancel(); // আগের কোনো সাউন্ড চলতে থাকলে তা বন্ধ করবে
+    window.speechSynthesis.cancel(); // আগের কোনো সাউন্ড চলতে থাকলে বন্ধ করবে
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
-    utterance.rate = 0.88; // পড়ার স্পিড সামান্য ধীর করা হয়েছে যাতে শ্রুতিমধুর ও স্পষ্ট শোনায়
-    utterance.pitch = 1.0; // ন্যাচারাল টিউন
+    utterance.rate = 0.88; // স্পষ্ট ও শ্রুতিমধুর উচ্চারণের জন্য গতি নির্ধারণ
+    utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
     utterance.onstart = () => setPlayingText(text);
@@ -83,48 +83,19 @@ export default function PatternLearnPage() {
     if (!userId) return;
     setSaving(true);
 
+    // ১. শেখা শেষ হলে প্রোগ্রেস "in_progress" করা হচ্ছে
     await supabase.from("user_pattern_progress").upsert(
       {
         user_id: userId,
         pattern_id: patternId,
-        status: "completed",
-        completed_at: new Date().toISOString(),
+        status: "in_progress",
       },
       { onConflict: "user_id,pattern_id" }
     );
 
-    const { data: allPatterns } = await supabase
-      .from("sentence_patterns")
-      .select("id")
-      .eq("category_id", categoryId);
-
-    const { data: completedRows } = await supabase
-      .from("user_pattern_progress")
-      .select("pattern_id")
-      .eq("user_id", userId)
-      .eq("status", "completed")
-      .in(
-        "pattern_id",
-        (allPatterns ?? []).map((p: any) => p.id)
-      );
-
-    const total = allPatterns?.length ?? 0;
-    const completed = completedRows?.length ?? 0;
-    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const catStatus = completed >= total ? "completed" : "in_progress";
-
-    await supabase.from("user_category_progress").upsert(
-      {
-        user_id: userId,
-        category_id: categoryId,
-        status: catStatus,
-        progress_percent: percent,
-      },
-      { onConflict: "user_id,category_id" }
-    );
-
     setSaving(false);
-    router.push(`/sentences/${categoryId}`);
+    // ২. সরাসরি প্র্যাকটিস কুইজ পেজে রিডাইরেক্ট
+    router.push(`/sentences/${categoryId}/${patternId}/practice`);
   }
 
   if (loading || !pattern) {
@@ -173,7 +144,7 @@ export default function PatternLearnPage() {
               {pattern.pattern_en}
             </h2>
           </div>
-          
+
           {/* Main Speaker Button */}
           <button
             onClick={() => speak(pattern.pattern_en)}
@@ -249,8 +220,7 @@ export default function PatternLearnPage() {
           <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
         ) : (
           <>
-            <span>পরবর্তী ধাপে যান</span>
-            <span className="text-lg">➜</span>
+            <span>এগিয়ে যাও ➜</span>
           </>
         )}
       </button>
