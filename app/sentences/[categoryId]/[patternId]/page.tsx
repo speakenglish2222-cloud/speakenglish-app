@@ -60,15 +60,15 @@ export default function PatternLearnPage() {
     init();
   }, [patternId]);
 
-  // 🔊 শ্রুতিমধুর উচ্চারণের জন্য আপগ্রেডেড টেক্সট-টু-স্পিচ মেথড
+  // 🔊 শ্রুতিমধুর উচ্চারণের জন্য টেক্সট-টু-স্পিচ
   function speak(text: string) {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
-    window.speechSynthesis.cancel(); // আগের কোনো সাউন্ড চলতে থাকলে বন্ধ করবে
+    window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
-    utterance.rate = 0.88; // স্পষ্ট ও শ্রুতিমধুর উচ্চারণের জন্য গতি নির্ধারণ
+    utterance.rate = 0.88;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
@@ -83,7 +83,7 @@ export default function PatternLearnPage() {
     if (!userId) return;
     setSaving(true);
 
-    // ১. শেখা শেষ হলে প্রোগ্রেস "in_progress" করা হচ্ছে
+    // ১. প্রোগ্রেস "in_progress" সেভ করা হচ্ছে
     await supabase.from("user_pattern_progress").upsert(
       {
         user_id: userId,
@@ -94,7 +94,7 @@ export default function PatternLearnPage() {
     );
 
     setSaving(false);
-    // ২. সরাসরি প্র্যাকটিস কুইজ পেজে রিডাইরেক্ট
+    // ২. প্র্যাকটিস পেজে নিয়ে যাওয়া হচ্ছে
     router.push(`/sentences/${categoryId}/${patternId}/practice`);
   }
 
@@ -145,7 +145,6 @@ export default function PatternLearnPage() {
             </h2>
           </div>
 
-          {/* Main Speaker Button */}
           <button
             onClick={() => speak(pattern.pattern_en)}
             className={`w-12 h-12 rounded-2xl backdrop-blur-md flex items-center justify-center text-xl transition-all shadow-md flex-shrink-0 active:scale-90 ${
@@ -183,7 +182,6 @@ export default function PatternLearnPage() {
               key={i}
               className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3.5"
             >
-              {/* Left Side: Sentence Text */}
               <div className="flex-1">
                 <p className="font-bold text-slate-800 text-base leading-snug">
                   {ex.example_en}
@@ -193,7 +191,6 @@ export default function PatternLearnPage() {
                 </p>
               </div>
 
-              {/* Right Side: Word-Style Speaker Button */}
               <button
                 onClick={() => speak(ex.example_en)}
                 className={`w-10 h-10 rounded-xl flex items-center justify-center text-base flex-shrink-0 transition-all active:scale-90 border ${
@@ -227,3 +224,4 @@ export default function PatternLearnPage() {
     </main>
   );
 }
+
