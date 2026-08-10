@@ -1,73 +1,45 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getDeviceId } from "@/lib/device";
 
 type Question = {
   id: number;
-  type: "pronunciation" | "recall" | "fill_blank";
+  type: "pronunciation" | "recall" | "fill";
   prompt_bn: string;
   correct_en: string;
-  word_bank: string[] | null;
+  words: string[];
 };
-
-// 🛠️ স্মার্ট নরম্যালাইজেশন (I'm এবং I am এর মতো কন্ট্রাকশন হ্যান্ডেল করার জন্য)
-function normalize(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/\bi'm\b/g, "i am")
-    .replace(/\bhe's\b/g, "he is")
-    .replace(/\bshe's\b/g, "she is")
-    .replace(/\bit's\b/g, "it is")
-    .replace(/\bthey're\b/g, "they are")
-    .replace(/\bwe're\b/g, "we are")
-    .replace(/\byou're\b/g, "you are")
-    .replace(/\bdon't\b/g, "do not")
-    .replace(/\bdoesn't\b/g, "does not")
-    .replace(/\bdidn't\b/g, "did not")
-    .replace(/\bcan't\b/g, "cannot")
-    .replace(/\bwon't\b/g, "will not")
-    .replace(/[.,!?']/g, "")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 export default function PracticePage() {
   const params = useParams();
   const router = useRouter();
-  const categoryId = Number(params.categoryId);
-  const patternId = Number(params.patternId);
+  const categoryId = params.categoryId as string;
+  const patternId = params.patternId as string;
 
-  const [userId, setUserId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [index, setIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [finished, setFinished] = useState(false);
 
-  const [sttSupported, setSttSupported] = useState(true);
+  // Practice States
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState("");
-  const [showReveal, setShowReveal] = useState(false);
+  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [availableWords, setAvailableWords] = useState<string[]>([]);
+  const [showRecallAnswer, setShowRecallAnswer] = useState(false);
   const [result, setResult] = useState<"correct" | "wrong" | null>(null);
-  const recognitionRef = useRef<any>(null);
-
-  const [bankWords, setBankWords] = useState<string[]>([]);
-  const [answerWords, setAnswerWords] = useState<string[]>([]);
   const [playingText, setPlayingText] = useState<string | null>(null);
 
+  // New Typing Mode State
+  const [isTyping, setIsTyping] = useState(false);
+  const [typedText, setTypedText] = useState("");
+
+  const [userId, setUserId] = useState<string | null>(null);
+
   useEffect(() => {
-    async function init() {
+    async function initUser() {
       const deviceId = getDeviceId();
       if (!deviceId) return;
 
@@ -76,269 +48,255 @@ export default function PracticePage() {
         .select("id")
         .eq("device_id", deviceId)
         .maybeSingle();
+
       if (user) setUserId(user.id);
-
-      const { data: qRows } = await supabase
-        .from("practice_questions")
-        .select("*")
-        .eq("pattern_id", patternId)
-        .order("order_index", { ascending: true });
-
-      setQuestions((qRows as Question[]) ?? []);
-      setLoading(false);
-
-      const SpeechRecognition =
-        (window as any).SpeechRecognition ||
-        (window as any).webkitSpeechRecognition;
-      setSttSupported(!!SpeechRecognition);
     }
-    init();
-  }, [patternId]);
-
-  const current = questions[index];
+    initUser();
+  }, []);
 
   useEffect(() => {
-    if (!current) return;
-    setResult(null);
-    setHeard("");
-    setShowReveal(false);
+    async function loadQuestions() {
+      setLoading(true);
+      const { data: sentences } = await supabase
+        .from("sentences")
+        .select("*")
+        .eq("pattern_id", Number(patternId));
 
-    if (current.type === "fill_blank") {
-      const words = current.word_bank ?? current.correct_en.split(" ");
-      setBankWords(shuffle(words));
-      setAnswerWords([]);
+      if (sentences && sentences.length > 0) {
+        const generatedQuestions: Question[] = [];
+
+        sentences.forEach((s) => {
+          // Type 1: Pronunciation
+          generatedQuestions.push({
+            id: s.id,
+            type: "pronunciation",
+            prompt_bn: s.sentence_bn,
+            correct_en: s.sentence_en,
+            words: [],
+          });
+
+          // Type 2: Fill in the Blanks
+          const words = s.sentence_en.split(" ");
+          const shuffled = [...words].sort(() => Math.random() - 0.5);
+          generatedQuestions.push({
+            id: s.id,
+            type: "fill",
+            prompt_bn: s.sentence_bn,
+            correct_en: s.sentence_en,
+            words: shuffled,
+          });
+
+          // Type 3: Recall
+          generatedQuestions.push({
+            id: s.id,
+            type: "recall",
+            prompt_bn: s.sentence_bn,
+            correct_en: s.sentence_en,
+            words: [],
+          });
+        });
+
+        const shuffledQuestions = generatedQuestions.sort(() => Math.random() - 0.5);
+        setQuestions(shuffledQuestions);
+      }
+      setLoading(false);
     }
-  }, [index, current]);
+
+    if (patternId) loadQuestions();
+  }, [patternId]);
+
+  const current = questions[currentIndex];
+
+  useEffect(() => {
+    if (current && current.type === "fill") {
+      setAvailableWords(current.words);
+      setSelectedWords([]);
+    }
+    setHeard("");
+    setShowRecallAnswer(false);
+    setResult(null);
+    setIsTyping(false);
+    setTypedText("");
+  }, [currentIndex, current]);
 
   function speak(text: string) {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-
+    if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
-    utterance.rate = 0.88;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-
-    utterance.onstart = () => setPlayingText(text);
+    setPlayingText(text);
     utterance.onend = () => setPlayingText(null);
     utterance.onerror = () => setPlayingText(null);
-
     window.speechSynthesis.speak(utterance);
   }
 
+  function normalize(text: string) {
+    return text
+      .toLowerCase()
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\bi am\b/g, "i'm")
+      .replace(/\byou are\b/g, "you're")
+      .replace(/\bhe is\b/g, "he's")
+      .replace(/\bshe is\b/g, "she's")
+      .replace(/\bit is\b/g, "it's")
+      .replace(/\bwe are\b/g, "we're")
+      .replace(/\bthey are\b/g, "they're")
+      .replace(/\bcannot\b/g, "can't")
+      .replace(/\bdo not\b/g, "don't")
+      .replace(/\bdoes not\b/g, "doesn't")
+      .replace(/\bdid not\b/g, "didn't")
+      .replace(/\bwill not\b/g, "won't")
+      .replace(/\bwould not\b/g, "wouldn't")
+      .replace(/\bhave not\b/g, "haven't")
+      .replace(/\bhas not\b/g, "hasn't");
+  }
+
   function startListening() {
-    if (!sttSupported || !current) return;
     const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("আপনার ব্রাউজারে ভয়েস সাপোর্ট নেই। টাইপ করে চেষ্টা করুন।");
+      return;
+    }
+
     const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
     recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => setListening(true);
-    recognition.onend = () => setListening(false);
+    setListening(true);
+    setHeard("");
+
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setHeard(transcript);
-      const isCorrect = normalize(transcript) === normalize(current.correct_en);
-      
-      if (!isCorrect) {
-        // 🔄 উত্তর ভুল হলে প্রশ্নটি লিস্টের শেষে পুনরায় যোগ হবে
-        setQuestions((prev) => [...prev, current]);
-      }
-      
-      setResult(isCorrect ? "correct" : "wrong");
+      setListening(false);
+      checkAnswer(transcript);
     };
-    recognition.onerror = () => setListening(false);
 
-    recognitionRef.current = recognition;
+    recognition.onerror = () => {
+      setListening(false);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+    };
+
     recognition.start();
   }
 
-  function markSelfConfirmed() {
-    setResult("correct");
+  function handleTextSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!typedText.trim() || !current) return;
+
+    setHeard(typedText);
+    checkAnswer(typedText);
+    setTypedText("");
   }
 
-  function tapBankWord(word: string, i: number) {
-    setAnswerWords((prev) => [...prev, word]);
-    setBankWords((prev) => prev.filter((_, idx) => idx !== i));
-  }
+  function checkAnswer(inputVal?: string) {
+    if (!current) return;
 
-  function tapAnswerWord(word: string, i: number) {
-    setBankWords((prev) => [...prev, word]);
-    setAnswerWords((prev) => prev.filter((_, idx) => idx !== i));
-  }
+    let isCorrect = false;
 
-  function checkFillBlank() {
-    const constructed = answerWords.join(" ");
-    const isCorrect = normalize(constructed) === normalize(current.correct_en);
+    if (current.type === "pronunciation" || current.type === "recall") {
+      const userText = inputVal || heard;
+      isCorrect = normalize(userText) === normalize(current.correct_en);
+    } else if (current.type === "fill") {
+      const constructedSentence = selectedWords.join(" ");
+      isCorrect = normalize(constructedSentence) === normalize(current.correct_en);
+    }
 
     if (!isCorrect) {
-      // 🔄 উত্তর ভুল হলে প্রশ্নটি লিস্টের শেষে পুনরায় যোগ হবে
+      // ভুল হলে প্রশ্নটি আবার তালিকার শেষে যুক্ত হবে
       setQuestions((prev) => [...prev, current]);
     }
 
     setResult(isCorrect ? "correct" : "wrong");
   }
 
-  async function handleNextQuestion() {
-    if (index + 1 < questions.length) {
-      setIndex((prev) => prev + 1);
+  function handleNext() {
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
     } else {
-      await completePattern();
+      router.push(`/sentences/${categoryId}/${patternId}`);
     }
   }
 
-  async function completePattern() {
-    if (!userId) return;
+  function handleWordClick(word: string, index: number) {
+    setSelectedWords((prev) => [...prev, word]);
+    setAvailableWords((prev) => prev.filter((_, i) => i !== index));
+  }
 
-    await supabase.from("user_pattern_progress").upsert(
-      {
-        user_id: userId,
-        pattern_id: patternId,
-        status: "completed",
-        completed_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,pattern_id" }
-    );
-
-    const { data: allPatterns } = await supabase
-      .from("sentence_patterns")
-      .select("id")
-      .eq("category_id", categoryId);
-
-    const { data: completedRows } = await supabase
-      .from("user_pattern_progress")
-      .select("pattern_id")
-      .eq("user_id", userId)
-      .eq("status", "completed")
-      .in("pattern_id", (allPatterns ?? []).map((p: any) => p.id));
-
-    const total = allPatterns?.length ?? 0;
-    const completed = completedRows?.length ?? 0;
-    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const catStatus = completed >= total ? "completed" : "in_progress";
-
-    await supabase.from("user_category_progress").upsert(
-      {
-        user_id: userId,
-        category_id: categoryId,
-        status: catStatus,
-        progress_percent: percent,
-      },
-      { onConflict: "user_id,category_id" }
-    );
-
-    setFinished(true);
+  function handleSelectedWordClick(word: string, index: number) {
+    setAvailableWords((prev) => [...prev, word]);
+    setSelectedWords((prev) => prev.filter((_, i) => i !== index));
   }
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 p-5 pt-8">
-        <div className="max-w-md mx-auto space-y-4">
-          <div className="h-10 w-2/3 bg-slate-200/60 rounded-2xl animate-pulse" />
-          <div className="h-40 bg-slate-200/60 rounded-3xl animate-pulse" />
-          <div className="h-20 bg-slate-200/60 rounded-2xl animate-pulse" />
-        </div>
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center p-5">
+        <p className="text-slate-400 font-bold">অনুশীলন লোড হচ্ছে...</p>
       </main>
     );
   }
 
-  if (finished) {
+  if (questions.length === 0) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-xl border border-slate-100 text-center relative overflow-hidden">
-          <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg shadow-orange-500/30 text-5xl animate-bounce">
-            🏅
-          </div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight mb-2">
-            অভিনন্দন!
-          </h1>
-          <p className="text-sm font-medium text-slate-500 mb-8 leading-relaxed">
-            তুমি সফলভাবে সব অনুশীলনী সম্পন্ন করেছো।
-          </p>
-          <button
-            onClick={() => router.push(`/sentences/${categoryId}`)}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/25 transition-all flex items-center justify-center gap-2"
-          >
-            <span>ক্যাটাগরিতে ফিরে যাও</span>
-            <span className="text-lg">➜</span>
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  if (!current) {
-    return (
-      <main className="min-h-screen bg-slate-50 p-5 pt-12 text-center max-w-md mx-auto">
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm">
-          <p className="text-slate-600 font-medium">
-            এই প্যাটার্নের কোনো প্র্যাকটিস প্রশ্ন নেই।
-          </p>
-          <button
-            onClick={() => router.back()}
-            className="mt-4 px-5 py-2.5 bg-orange-500 text-white font-bold rounded-xl"
-          >
-            ফিরে যান
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  const progressPercent = Math.min(
-    100,
-    Math.round(((index + 1) / questions.length) * 100)
-  );
-
-  return (
-    <main className="min-h-screen bg-slate-50 pt-6 pb-28 px-4 max-w-md mx-auto">
-      {/* Top Bar with Progress */}
-      <div className="flex items-center gap-3.5 mb-4 px-1">
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-5">
+        <p className="text-slate-500 font-bold mb-4">কোনো অনুশীলনী পাওয়া যায়নি!</p>
         <button
           onClick={() => router.back()}
-          className="w-10 h-10 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-700 text-lg hover:bg-slate-50 active:scale-95 transition-all flex-shrink-0"
+          className="bg-indigo-600 text-white font-bold px-6 py-2.5 rounded-2xl shadow-md"
+        >
+          ফিরে যাও
+        </button>
+      </main>
+    );
+  }
+
+  const progress = Math.round(((currentIndex + 1) / questions.length) * 100);
+
+  return (
+    <main className="min-h-screen bg-slate-50 p-5 pb-28">
+      {/* Top Header & Progress */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <button
+          onClick={() => router.back()}
+          className="w-10 h-10 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-center text-slate-600 shadow-sm active:scale-95 transition-all"
         >
           ←
         </button>
         <div className="flex-1">
-          <div className="flex justify-between items-center mb-1.5">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              অনুশীলন ({index + 1}/{questions.length})
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs font-bold text-slate-500">
+              অনুশীলন ({currentIndex + 1}/{questions.length})
             </span>
-            <span className="text-xs font-black text-orange-600">
-              {progressPercent}%
-            </span>
+            <span className="text-xs font-extrabold text-orange-600">{progress}%</span>
           </div>
-          <div className="h-2 w-full bg-slate-200/80 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300 rounded-full"
-              style={{ width: `${progressPercent}%` }}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 h-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* Task Title */}
-      <div className="mb-5 px-1">
-        <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">
-          {current.type === "pronunciation" && "বাক্যটি শুদ্ধভাবে উচ্চারণ করো"}
-          {current.type === "recall" && "বাক্যটি ইংরেজিতে বলো"}
-          {current.type === "fill_blank" && "সঠিক বাক্যটি সাজাও"}
-        </h1>
-      </div>
+      {/* Instruction */}
+      <h2 className="text-lg font-extrabold text-slate-800 mb-4">
+        {current.type === "pronunciation" && "বাক্যটি শুদ্ধভাবে উচ্চারণ করো"}
+        {current.type === "fill" && "শব্দগুলো সঠিকভাবে সাজাও"}
+        {current.type === "recall" && "বাংলা দেখে মনে করে বলো"}
+      </h2>
 
-      {/* Type 1: Pronunciation */}
+      {/* TYPE 1: PRONUNCIATION */}
       {current.type === "pronunciation" && (
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl shadow-orange-500/20 flex items-center justify-between gap-4">
-            <p className="font-extrabold text-xl leading-snug">
-              {current.correct_en}
-            </p>
+            <p className="font-extrabold text-xl leading-snug">{current.correct_en}</p>
             <button
               onClick={() => speak(current.correct_en)}
               className={`w-12 h-12 rounded-2xl backdrop-blur-md flex items-center justify-center text-xl transition-all shadow-md flex-shrink-0 active:scale-90 ${
@@ -351,199 +309,249 @@ export default function PracticePage() {
             </button>
           </div>
 
-          {sttSupported ? (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-8 shadow-sm text-center">
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
+            {/* Toggle Mode Buttons */}
+            <div className="flex justify-center gap-2 mb-6">
               <button
-                onClick={startListening}
-                className={`w-24 h-24 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white text-4xl flex items-center justify-center mx-auto shadow-xl shadow-orange-500/30 transition-all active:scale-95 ${
-                  listening ? "animate-pulse ring-8 ring-orange-200" : ""
+                onClick={() => setIsTyping(false)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  !isTyping
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                🎤
+                🎤 ভয়েস দিয়ে বলো
               </button>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-4">
-                {listening ? "শুনছি... এখন বলো" : "মাইকে চাপ দিয়ে বাক্যটি বলো"}
-              </p>
-              {heard && (
-                <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-200/60">
-                  <p className="text-xs font-medium text-slate-400">তুমি বলেছ:</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">
-                    "{heard}"
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 text-center shadow-sm">
-              <p className="text-sm text-slate-600 mb-4 font-medium leading-relaxed">
-                তোমার ব্রাউজারে ভয়েস রেকর্ডিং সাপোর্ট নেই। বাক্যটি জোরে পড়ো,
-                তারপর নিচের বাটনে চাপো।
-              </p>
               <button
-                onClick={markSelfConfirmed}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-2xl transition-all active:scale-95"
-              >
-                আমি বলেছি ✓
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Type 2: Recall */}
-      {current.type === "recall" && (
-        <div className="space-y-5">
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
-            <span className="text-[10px] font-extrabold text-orange-600 bg-orange-100/80 px-2.5 py-1 rounded-full tracking-wider uppercase mb-2 inline-block">
-              বাংলা বাক্য
-            </span>
-            <p className="font-extrabold text-slate-800 text-xl leading-snug">
-              {current.prompt_bn}
-            </p>
-          </div>
-
-          {sttSupported ? (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
-              <button
-                onClick={startListening}
-                className={`w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white text-3xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 transition-all active:scale-95 ${
-                  listening ? "animate-pulse ring-8 ring-orange-200" : ""
+                onClick={() => setIsTyping(true)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  isTyping
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                🎤
+                ⌨️ টাইপ করে লেখো
               </button>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-3">
-                {listening ? "শুনছি... ইংরেজিতে বলো" : "মাইকে চাপ দিয়ে ইংরেজিতে বলো"}
-              </p>
-              {heard && (
-                <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/60">
-                  <p className="text-xs font-medium text-slate-400">তুমি বলেছ:</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">
-                    "{heard}"
-                  </p>
-                </div>
-              )}
             </div>
-          ) : (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-5 text-center shadow-sm">
-              <p className="text-xs text-slate-500 font-medium">
-                ইংরেজিতে বাক্যটি মনে করে জোরে বলো, তারপর উত্তর দেখো।
-              </p>
-            </div>
-          )}
 
-          {!showReveal ? (
-            <button
-              onClick={() => setShowReveal(true)}
-              className="w-full bg-white border border-slate-200/80 text-orange-600 font-bold py-3.5 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center gap-2"
-            >
-              <span>ইংরেজি দেখো</span>
-              <span>👁</span>
-            </button>
-          ) : (
-            <div className="bg-orange-50 border border-orange-200/80 rounded-3xl p-5 text-center space-y-3">
-              <span className="text-[10px] font-bold text-orange-600 tracking-wider uppercase">
-                সঠিক ইংরেজি
-              </span>
-              <p className="font-extrabold text-orange-900 text-lg">
-                {current.correct_en}
-              </p>
-              {!result && (
+            {!isTyping ? (
+              /* Voice Input Section */
+              <>
                 <button
-                  onClick={markSelfConfirmed}
-                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all active:scale-95 text-sm"
+                  onClick={startListening}
+                  className={`w-24 h-24 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white text-4xl flex items-center justify-center mx-auto shadow-xl shadow-orange-500/30 transition-all active:scale-95 ${
+                    listening ? "animate-pulse ring-8 ring-orange-200" : ""
+                  }`}
                 >
-                  বুঝেছি ✓
+                  🎤
                 </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Type 3: Fill Blank */}
-      {current.type === "fill_blank" && (
-        <div className="space-y-4">
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm">
-            <span className="text-[10px] font-extrabold text-orange-600 bg-orange-100/80 px-2.5 py-0.5 rounded-full tracking-wider uppercase mb-2 inline-block">
-              অর্থ
-            </span>
-            <p className="font-bold text-slate-800 text-lg leading-snug">
-              {current.prompt_bn}
-            </p>
-          </div>
-
-          <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-4 min-h-[90px] flex flex-wrap gap-2 items-center">
-            {answerWords.length === 0 ? (
-              <p className="text-xs font-semibold text-slate-400 w-full text-center">
-                নিচ থেকে শব্দ বেছে নিয়ে বাক্য সাজাও
-              </p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-4">
+                  {listening ? "শুনছি... এখন বলো" : "মাইকে চাপ দিয়ে বাক্যটি বলো"}
+                </p>
+              </>
             ) : (
-              answerWords.map((w, i) => (
+              /* Typing Input Section */
+              <form onSubmit={handleTextSubmit} className="space-y-3">
+                <input
+                  type="text"
+                  value={typedText}
+                  onChange={(e) => setTypedText(e.target.value)}
+                  placeholder="এখানে ইংরেজি বাক্যটি টাইপ করো..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
                 <button
-                  key={i}
-                  onClick={() => tapAnswerWord(w, i)}
-                  className="bg-orange-500 text-white px-3.5 py-2 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
+                  type="submit"
+                  disabled={!typedText.trim()}
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3 rounded-2xl transition-all active:scale-95 text-sm shadow-md shadow-orange-500/20"
                 >
-                  <span>{w}</span>
-                  <span className="text-xs opacity-70">✕</span>
+                  জমা দাও ➔
                 </button>
-              ))
+              </form>
+            )}
+
+            {heard && (
+              <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-200/60">
+                <p className="text-xs font-medium text-slate-400">তুমি বলেছ/লিখেছ:</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">"{heard}"</p>
+              </div>
             )}
           </div>
-
-          <div className="flex flex-wrap gap-2 justify-center py-2">
-            {bankWords.map((w, i) => (
-              <button
-                key={i}
-                onClick={() => tapBankWord(w, i)}
-                className="bg-white border border-slate-200 text-slate-700 hover:border-orange-300 hover:text-orange-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all"
-              >
-                {w}
-              </button>
-            ))}
-          </div>
-
-          {!result && (
-            <button
-              onClick={checkFillBlank}
-              disabled={answerWords.length === 0}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/25 transition-all active:scale-95 disabled:opacity-50"
-            >
-              চেক করো
-            </button>
-          )}
         </div>
       )}
 
-      {/* Result Card & Next Action Button */}
-      {result && (
-        <div className="mt-6 space-y-3">
-          <div
-            className={`rounded-2xl p-4 text-center font-bold border transition-all ${
-              result === "correct"
-                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                : "bg-rose-50 border-rose-200 text-rose-700"
-            }`}
-          >
-            <p className="text-lg">
-              {result === "correct" ? "✅ একদম সঠিক!" : "❌ ভুল হয়েছে"}
+      {/* TYPE 2: FILL IN THE BLANKS */}
+      {current.type === "fill" && (
+        <div className="space-y-6">
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
+            <p className="text-lg font-bold text-slate-800 text-center mb-6">
+              "{current.prompt_bn}"
             </p>
-            {result === "wrong" && (
-              <p className="text-xs mt-1.5 font-medium opacity-90">
-                সঠিক উত্তর: <span className="font-bold">{current.correct_en}</span>
-              </p>
-            )}
+
+            {/* Answer Display Box */}
+            <div className="min-h-[60px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-3 flex flex-wrap gap-2 items-center justify-center mb-6">
+              {selectedWords.map((word, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSelectedWordClick(word, idx)}
+                  className="bg-orange-500 text-white text-sm font-bold px-3 py-1.5 rounded-xl shadow-md active:scale-95 transition-all"
+                >
+                  {word}
+                </button>
+              ))}
+            </div>
+
+            {/* Word Bank */}
+            <div className="flex flex-wrap gap-2 justify-center">
+              {availableWords.map((word, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleWordClick(word, idx)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold px-3.5 py-2 rounded-xl border border-slate-200/80 active:scale-95 transition-all"
+                >
+                  {word}
+                </button>
+              ))}
+            </div>
           </div>
 
           <button
-            onClick={handleNextQuestion}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+            onClick={() => checkAnswer()}
+            disabled={selectedWords.length === 0}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-extrabold py-3.5 rounded-2xl shadow-lg shadow-orange-500/25 active:scale-98 transition-all"
           >
-            <span>
-              {index + 1 < questions.length ? "পরবর্তী প্রশ্ন ➜" : "সম্পন্ন করো ➜"}
-            </span>
+            উত্তর চেক করো
           </button>
+        </div>
+      )}
+
+      {/* TYPE 3: RECALL */}
+      {current.type === "recall" && (
+        <div className="space-y-6">
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
+            <p className="text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-full px-3 py-1 inline-block mb-3">
+              বাংলা অর্থ
+            </p>
+            <p className="text-2xl font-extrabold text-slate-800 mb-6 leading-relaxed">
+              "{current.prompt_bn}"
+            </p>
+
+            {showRecallAnswer ? (
+              <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl mb-4">
+                <p className="text-xs text-orange-600 font-bold mb-1">সঠিক বাক্য:</p>
+                <p className="text-lg font-extrabold text-orange-900">{current.correct_en}</p>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowRecallAnswer(true)}
+                className="text-xs font-bold text-slate-500 hover:text-orange-600 underline mb-6 block mx-auto"
+              >
+                ইংরেজি উত্তরটি দেখো
+              </button>
+            )}
+
+            {/* Toggle Mode Buttons */}
+            <div className="flex justify-center gap-2 mb-6">
+              <button
+                onClick={() => setIsTyping(false)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  !isTyping
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                🎤 ভয়েস দিয়ে বলো
+              </button>
+              <button
+                onClick={() => setIsTyping(true)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  isTyping
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                ⌨️ টাইপ করে লেখো
+              </button>
+            </div>
+
+            {!isTyping ? (
+              <>
+                <button
+                  onClick={startListening}
+                  className={`w-24 h-24 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white text-4xl flex items-center justify-center mx-auto shadow-xl shadow-orange-500/30 transition-all active:scale-95 ${
+                    listening ? "animate-pulse ring-8 ring-orange-200" : ""
+                  }`}
+                >
+                  🎤
+                </button>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-4">
+                  {listening ? "শুনছি... এখন বলো" : "মাইকে চাপ দিয়ে বাক্যটি বলো"}
+                </p>
+              </>
+            ) : (
+              <form onSubmit={handleTextSubmit} className="space-y-3">
+                <input
+                  type="text"
+                  value={typedText}
+                  onChange={(e) => setTypedText(e.target.value)}
+                  placeholder="এখানে ইংরেজি বাক্যটি টাইপ করো..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!typedText.trim()}
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3 rounded-2xl transition-all active:scale-95 text-sm shadow-md shadow-orange-500/20"
+                >
+                  জমা দাও ➔
+                </button>
+              </form>
+            )}
+
+            {heard && (
+              <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-200/60">
+                <p className="text-xs font-medium text-slate-400">তুমি বলেছ/লিখেছ:</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">"{heard}"</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Result Bottom Sheet Modal */}
+      {result && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-end justify-center z-50 p-4">
+          <div
+            className={`w-full max-w-md rounded-3xl p-6 shadow-2xl transition-all ${
+              result === "correct" ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+            }`}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-3xl">{result === "correct" ? "🎉" : "😅"}</span>
+              <div>
+                <h3 className="font-extrabold text-xl">
+                  {result === "correct" ? "অসাধারণ! সঠিক হয়েছে" : "একটু ভুল হয়েছে!"}
+                </h3>
+                {result === "wrong" && (
+                  <p className="text-xs text-rose-100 mt-0.5">
+                    সঠিক উত্তরটি আবার সামনে আসবে।
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {result === "wrong" && (
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 mb-4 border border-white/10">
+                <p className="text-xs font-medium text-rose-100">সঠিক উত্তর ছিল:</p>
+                <p className="font-bold text-sm mt-0.5">{current.correct_en}</p>
+              </div>
+            )}
+
+            <button
+              onClick={handleNext}
+              className="w-full bg-white text-slate-900 font-extrabold py-3.5 rounded-2xl shadow-lg active:scale-98 transition-all"
+            >
+              পরবর্তী ➔
+            </button>
+          </div>
         </div>
       )}
     </main>
