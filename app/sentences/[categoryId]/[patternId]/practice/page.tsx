@@ -62,6 +62,10 @@ export default function PracticePage() {
   const [result, setResult] = useState<"correct" | "wrong" | null>(null);
   const recognitionRef = useRef<any>(null);
 
+  // ⌨️ টাইপিং মোডের স্টেটসমূহ
+  const [isTyping, setIsTyping] = useState(false);
+  const [typedText, setTypedText] = useState("");
+
   const [bankWords, setBankWords] = useState<string[]>([]);
   const [answerWords, setAnswerWords] = useState<string[]>([]);
   const [playingText, setPlayingText] = useState<string | null>(null);
@@ -102,6 +106,8 @@ export default function PracticePage() {
     setResult(null);
     setHeard("");
     setShowReveal(false);
+    setIsTyping(false);
+    setTypedText("");
 
     if (current.type === "fill_blank") {
       const words = current.word_bank ?? current.correct_en.split(" ");
@@ -128,6 +134,20 @@ export default function PracticePage() {
     window.speechSynthesis.speak(utterance);
   }
 
+  function checkAnswer(userText: string) {
+    if (!current) return;
+    setHeard(userText);
+
+    const isCorrect = normalize(userText) === normalize(current.correct_en);
+
+    if (!isCorrect) {
+      // 🔄 উত্তর ভুল হলে প্রশ্নটি লিস্টের শেষে পুনরায় যোগ হবে
+      setQuestions((prev) => [...prev, current]);
+    }
+
+    setResult(isCorrect ? "correct" : "wrong");
+  }
+
   function startListening() {
     if (!sttSupported || !current) return;
     const SpeechRecognition =
@@ -142,20 +162,19 @@ export default function PracticePage() {
     recognition.onend = () => setListening(false);
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
-      setHeard(transcript);
-      const isCorrect = normalize(transcript) === normalize(current.correct_en);
-      
-      if (!isCorrect) {
-        // 🔄 উত্তর ভুল হলে প্রশ্নটি লিস্টের শেষে পুনরায় যোগ হবে
-        setQuestions((prev) => [...prev, current]);
-      }
-      
-      setResult(isCorrect ? "correct" : "wrong");
+      checkAnswer(transcript);
     };
     recognition.onerror = () => setListening(false);
 
     recognitionRef.current = recognition;
     recognition.start();
+  }
+
+  function handleTextSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!typedText.trim()) return;
+    checkAnswer(typedText);
+    setTypedText("");
   }
 
   function markSelfConfirmed() {
@@ -177,7 +196,6 @@ export default function PracticePage() {
     const isCorrect = normalize(constructed) === normalize(current.correct_en);
 
     if (!isCorrect) {
-      // 🔄 উত্তর ভুল হলে প্রশ্নটি লিস্টের শেষে পুনরায় যোগ হবে
       setQuestions((prev) => [...prev, current]);
     }
 
@@ -351,42 +369,85 @@ export default function PracticePage() {
             </button>
           </div>
 
-          {sttSupported ? (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-8 shadow-sm text-center">
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
+            {/* Toggle Mode Buttons */}
+            <div className="flex justify-center gap-2 mb-6">
               <button
-                onClick={startListening}
-                className={`w-24 h-24 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white text-4xl flex items-center justify-center mx-auto shadow-xl shadow-orange-500/30 transition-all active:scale-95 ${
-                  listening ? "animate-pulse ring-8 ring-orange-200" : ""
+                onClick={() => setIsTyping(false)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  !isTyping
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                🎤
+                🎤 ভয়েস দিয়ে বলো
               </button>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-4">
-                {listening ? "শুনছি... এখন বলো" : "মাইকে চাপ দিয়ে বাক্যটি বলো"}
-              </p>
-              {heard && (
-                <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-200/60">
-                  <p className="text-xs font-medium text-slate-400">তুমি বলেছ:</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">
-                    "{heard}"
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 text-center shadow-sm">
-              <p className="text-sm text-slate-600 mb-4 font-medium leading-relaxed">
-                তোমার ব্রাউজারে ভয়েস রেকর্ডিং সাপোর্ট নেই। বাক্যটি জোরে পড়ো,
-                তারপর নিচের বাটনে চাপো।
-              </p>
               <button
-                onClick={markSelfConfirmed}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-2xl transition-all active:scale-95"
+                onClick={() => setIsTyping(true)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  isTyping
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
               >
-                আমি বলেছি ✓
+                ⌨️ টাইপ করে লেখো
               </button>
             </div>
-          )}
+
+            {!isTyping ? (
+              sttSupported ? (
+                <>
+                  <button
+                    onClick={startListening}
+                    className={`w-24 h-24 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white text-4xl flex items-center justify-center mx-auto shadow-xl shadow-orange-500/30 transition-all active:scale-95 ${
+                      listening ? "animate-pulse ring-8 ring-orange-200" : ""
+                    }`}
+                  >
+                    🎤
+                  </button>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-4">
+                    {listening ? "শুনছি... এখন বলো" : "মাইকে চাপ দিয়ে বাক্যটি বলো"}
+                  </p>
+                </>
+              ) : (
+                <div className="text-center py-2">
+                  <p className="text-xs text-slate-500 mb-3 font-medium">
+                    ভয়েস সাপোর্ট নেই। টাইপ মোড ব্যবহার করো।
+                  </p>
+                  <button
+                    onClick={markSelfConfirmed}
+                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-xs"
+                  >
+                    আমি জোরে পড়েছি ✓
+                  </button>
+                </div>
+              )
+            ) : (
+              <form onSubmit={handleTextSubmit} className="space-y-3">
+                <input
+                  type="text"
+                  value={typedText}
+                  onChange={(e) => setTypedText(e.target.value)}
+                  placeholder="এখানে ইংরেজি বাক্যটি টাইপ করো..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!typedText.trim()}
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3 rounded-2xl transition-all active:scale-95 text-sm shadow-md shadow-orange-500/20"
+                >
+                  জমা দাও ➔
+                </button>
+              </form>
+            )}
+
+            {heard && (
+              <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-200/60">
+                <p className="text-xs font-medium text-slate-400">তুমি বলেছ/লিখেছ:</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">"{heard}"</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -402,35 +463,79 @@ export default function PracticePage() {
             </p>
           </div>
 
-          {sttSupported ? (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
+            {/* Toggle Mode Buttons */}
+            <div className="flex justify-center gap-2 mb-6">
               <button
-                onClick={startListening}
-                className={`w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white text-3xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 transition-all active:scale-95 ${
-                  listening ? "animate-pulse ring-8 ring-orange-200" : ""
+                onClick={() => setIsTyping(false)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  !isTyping
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                🎤
+                🎤 ভয়েস দিয়ে বলো
               </button>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-3">
-                {listening ? "শুনছি... ইংরেজিতে বলো" : "মাইকে চাপ দিয়ে ইংরেজিতে বলো"}
-              </p>
-              {heard && (
-                <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/60">
-                  <p className="text-xs font-medium text-slate-400">তুমি বলেছ:</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">
-                    "{heard}"
+              <button
+                onClick={() => setIsTyping(true)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  isTyping
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                ⌨️ টাইপ করে লেখো
+              </button>
+            </div>
+
+            {!isTyping ? (
+              sttSupported ? (
+                <>
+                  <button
+                    onClick={startListening}
+                    className={`w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white text-3xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/25 transition-all active:scale-95 ${
+                      listening ? "animate-pulse ring-8 ring-orange-200" : ""
+                    }`}
+                  >
+                    🎤
+                  </button>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-3">
+                    {listening ? "শুনছি... ইংরেজিতে বলো" : "মাইকে চাপ দিয়ে ইংরেজিতে বলো"}
                   </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-5 text-center shadow-sm">
-              <p className="text-xs text-slate-500 font-medium">
-                ইংরেজিতে বাক্যটি মনে করে জোরে বলো, তারপর উত্তর দেখো।
-              </p>
-            </div>
-          )}
+                </>
+              ) : (
+                <p className="text-xs text-slate-500 font-medium">
+                  ইংরেজিতে বাক্যটি মনে করে জোরে বলো, তারপর উত্তর দেখো।
+                </p>
+              )
+            ) : (
+              <form onSubmit={handleTextSubmit} className="space-y-3">
+                <input
+                  type="text"
+                  value={typedText}
+                  onChange={(e) => setTypedText(e.target.value)}
+                  placeholder="এখানে ইংরেজি বাক্যটি টাইপ করো..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!typedText.trim()}
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3 rounded-2xl transition-all active:scale-95 text-sm shadow-md shadow-orange-500/20"
+                >
+                  জমা দাও ➔
+                </button>
+              </form>
+            )}
+
+            {heard && (
+              <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/60">
+                <p className="text-xs font-medium text-slate-400">তুমি বলেছ/লিখেছ:</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">
+                  "{heard}"
+                </p>
+              </div>
+            )}
+          </div>
 
           {!showReveal ? (
             <button
@@ -531,18 +636,17 @@ export default function PracticePage() {
             </p>
             {result === "wrong" && (
               <p className="text-xs mt-1.5 font-medium opacity-90">
-                সঠিক উত্তর: <span className="font-bold">{current.correct_en}</span>
+                প্রশ্নটি আবার প্র্যাকটিস করার জন্য তালিকার শেষে যোগ করা হয়েছে।
               </p>
             )}
           </div>
 
           <button
             onClick={handleNextQuestion}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+            className="w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-bold py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
           >
-            <span>
-              {index + 1 < questions.length ? "পরবর্তী প্রশ্ন ➜" : "সম্পন্ন করো ➜"}
-            </span>
+            <span>পরবর্তী প্রশ্ন</span>
+            <span className="text-lg">➔</span>
           </button>
         </div>
       )}
