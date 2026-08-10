@@ -95,7 +95,6 @@ export default function PracticePage() {
       setBankWords(shuffle(words));
       setAnswerWords([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, current]);
 
   function speak(text: string) {
@@ -132,6 +131,11 @@ export default function PracticePage() {
       const transcript = event.results[0][0].transcript;
       setHeard(transcript);
       const isCorrect = normalize(transcript) === normalize(current.correct_en);
+      
+      if (!isCorrect) {
+        setQuestions((prev) => [...prev, current]);
+      }
+      
       setResult(isCorrect ? "correct" : "wrong");
     };
     recognition.onerror = () => setListening(false);
@@ -157,6 +161,11 @@ export default function PracticePage() {
   function checkFillBlank() {
     const constructed = answerWords.join(" ");
     const isCorrect = normalize(constructed) === normalize(current.correct_en);
+
+    if (!isCorrect) {
+      setQuestions((prev) => [...prev, current]);
+    }
+
     setResult(isCorrect ? "correct" : "wrong");
   }
 
@@ -223,7 +232,6 @@ export default function PracticePage() {
     );
   }
 
-  // 🎉 কুইজ সম্পন্ন হলে
   if (finished) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -235,7 +243,7 @@ export default function PracticePage() {
             অভিনন্দন!
           </h1>
           <p className="text-sm font-medium text-slate-500 mb-8 leading-relaxed">
-            তুমি সফলভাবে অনুশীলনটি সম্পন্ন করেছো এবং প্যাটার্নটি আনলক করা হয়েছে।
+            তুমি সফলভাবে সব অনুশীলনী সম্পন্ন করেছো।
           </p>
           <button
             onClick={() => router.push(`/sentences/${categoryId}`)}
@@ -267,11 +275,13 @@ export default function PracticePage() {
     );
   }
 
-  const progressPercent = Math.round(((index + 1) / questions.length) * 100);
+  const progressPercent = Math.min(
+    100,
+    Math.round(((index + 1) / questions.length) * 100)
+  );
 
   return (
     <main className="min-h-screen bg-slate-50 pt-6 pb-28 px-4 max-w-md mx-auto">
-      {/* Navigation & Progress */}
       <div className="flex items-center gap-3.5 mb-4 px-1">
         <button
           onClick={() => router.back()}
@@ -297,7 +307,6 @@ export default function PracticePage() {
         </div>
       </div>
 
-      {/* Task Heading */}
       <div className="mb-5 px-1">
         <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">
           {current.type === "pronunciation" && "বাক্যটি শুদ্ধভাবে উচ্চারণ করো"}
@@ -306,7 +315,6 @@ export default function PracticePage() {
         </h1>
       </div>
 
-      {/* Question Type 1: Pronunciation */}
       {current.type === "pronunciation" && (
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl shadow-orange-500/20 flex items-center justify-between gap-4">
@@ -364,7 +372,6 @@ export default function PracticePage() {
         </div>
       )}
 
-      {/* Question Type 2: Recall */}
       {current.type === "recall" && (
         <div className="space-y-5">
           <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
@@ -435,7 +442,6 @@ export default function PracticePage() {
         </div>
       )}
 
-      {/* Question Type 3: Fill Blank / Word Bank */}
       {current.type === "fill_blank" && (
         <div className="space-y-4">
           <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm">
@@ -490,7 +496,6 @@ export default function PracticePage() {
         </div>
       )}
 
-      {/* Result Card & Next Button */}
       {result && (
         <div className="mt-6 space-y-3">
           <div
@@ -515,9 +520,8 @@ export default function PracticePage() {
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
           >
             <span>
-              {index + 1 < questions.length ? "পরবর্তী প্রশ্ন" : "সম্পন্ন করো"}
+              {index + 1 < questions.length ? "পরবর্তী প্রশ্ন ➜" : "সম্পন্ন করো ➜"}
             </span>
-            <span>➜</span>
           </button>
         </div>
       )}
