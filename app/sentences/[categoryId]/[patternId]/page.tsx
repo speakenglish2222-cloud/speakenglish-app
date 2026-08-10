@@ -80,7 +80,11 @@ export default function PatternLearnPage() {
   }
 
   async function handleContinue() {
-    if (!userId) return;
+    if (!userId) {
+      // ইউজার আইডি না থাকলেও সে প্র্যাকটিসে যেতে পারবে
+      router.push(`/sentences/${categoryId}/${patternId}/practice`);
+      return;
+    }
     setSaving(true);
 
     // ১. প্রোগ্রেস "in_progress" সেভ করা হচ্ছে
@@ -224,4 +228,3 @@ export default function PatternLearnPage() {
     </main>
   );
 }
-
