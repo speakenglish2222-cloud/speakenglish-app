@@ -62,8 +62,8 @@ export default function PracticePage() {
   const [result, setResult] = useState<"correct" | "wrong" | null>(null);
   const recognitionRef = useRef<any>(null);
 
-  // ⌨️ টাইপিং মোডের স্টেটসমূহ
-  const [isTyping, setIsTyping] = useState(false);
+  // ⌨️ টাইপিং মোডের স্টেটসমূহ (ডিফল্ট ভয়েস মোড)
+  const [inputMode, setInputMode] = useState<"voice" | "type">("voice");
   const [typedText, setTypedText] = useState("");
 
   const [bankWords, setBankWords] = useState<string[]>([]);
@@ -106,7 +106,7 @@ export default function PracticePage() {
     setResult(null);
     setHeard("");
     setShowReveal(false);
-    setIsTyping(false);
+    setInputMode("voice");
     setTypedText("");
 
     if (current.type === "fill_blank") {
@@ -141,7 +141,6 @@ export default function PracticePage() {
     const isCorrect = normalize(userText) === normalize(current.correct_en);
 
     if (!isCorrect) {
-      // 🔄 উত্তর ভুল হলে প্রশ্নটি লিস্টের শেষে পুনরায় যোগ হবে
       setQuestions((prev) => [...prev, current]);
     }
 
@@ -174,7 +173,6 @@ export default function PracticePage() {
     e.preventDefault();
     if (!typedText.trim()) return;
     checkAnswer(typedText);
-    setTypedText("");
   }
 
   function markSelfConfirmed() {
@@ -352,7 +350,7 @@ export default function PracticePage() {
 
       {/* Type 1: Pronunciation */}
       {current.type === "pronunciation" && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl shadow-orange-500/20 flex items-center justify-between gap-4">
             <p className="font-extrabold text-xl leading-snug">
               {current.correct_en}
@@ -369,32 +367,36 @@ export default function PracticePage() {
             </button>
           </div>
 
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
-            {/* Toggle Mode Buttons */}
-            <div className="flex justify-center gap-2 mb-6">
-              <button
-                onClick={() => setIsTyping(false)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  !isTyping
-                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                🎤 ভয়েস দিয়ে বলো
-              </button>
-              <button
-                onClick={() => setIsTyping(true)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  isTyping
-                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                ⌨️ টাইপ করে লেখো
-              </button>
-            </div>
+          {/* 🔘 স্পষ্ট টগল অপশন বাটন দুটি */}
+          <div className="flex bg-slate-200/70 p-1.5 rounded-2xl gap-1">
+            <button
+              type="button"
+              onClick={() => setInputMode("voice")}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                inputMode === "voice"
+                  ? "bg-white text-orange-600 shadow-sm"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              <span>🎤</span>
+              <span>ভয়েস দিয়ে বলো</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputMode("type")}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                inputMode === "type"
+                  ? "bg-white text-orange-600 shadow-sm"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              <span>⌨️</span>
+              <span>টাইপ করে লেখো</span>
+            </button>
+          </div>
 
-            {!isTyping ? (
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
+            {inputMode === "voice" ? (
               sttSupported ? (
                 <>
                   <button
@@ -416,7 +418,7 @@ export default function PracticePage() {
                   </p>
                   <button
                     onClick={markSelfConfirmed}
-                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-xs"
+                    className="bg-orange-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs"
                   >
                     আমি জোরে পড়েছি ✓
                   </button>
@@ -429,12 +431,12 @@ export default function PracticePage() {
                   value={typedText}
                   onChange={(e) => setTypedText(e.target.value)}
                   placeholder="এখানে ইংরেজি বাক্যটি টাইপ করো..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 <button
                   type="submit"
                   disabled={!typedText.trim()}
-                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3 rounded-2xl transition-all active:scale-95 text-sm shadow-md shadow-orange-500/20"
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-all active:scale-95 text-sm shadow-md shadow-orange-500/20"
                 >
                   জমা দাও ➔
                 </button>
@@ -453,7 +455,7 @@ export default function PracticePage() {
 
       {/* Type 2: Recall */}
       {current.type === "recall" && (
-        <div className="space-y-5">
+        <div className="space-y-4">
           <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
             <span className="text-[10px] font-extrabold text-orange-600 bg-orange-100/80 px-2.5 py-1 rounded-full tracking-wider uppercase mb-2 inline-block">
               বাংলা বাক্য
@@ -463,32 +465,36 @@ export default function PracticePage() {
             </p>
           </div>
 
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
-            {/* Toggle Mode Buttons */}
-            <div className="flex justify-center gap-2 mb-6">
-              <button
-                onClick={() => setIsTyping(false)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  !isTyping
-                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                🎤 ভয়েস দিয়ে বলো
-              </button>
-              <button
-                onClick={() => setIsTyping(true)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  isTyping
-                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                ⌨️ টাইপ করে লেখো
-              </button>
-            </div>
+          {/* 🔘 স্পষ্ট টগল অপশন বাটন দুটি */}
+          <div className="flex bg-slate-200/70 p-1.5 rounded-2xl gap-1">
+            <button
+              type="button"
+              onClick={() => setInputMode("voice")}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                inputMode === "voice"
+                  ? "bg-white text-orange-600 shadow-sm"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              <span>🎤</span>
+              <span>ভয়েস দিয়ে বলো</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputMode("type")}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                inputMode === "type"
+                  ? "bg-white text-orange-600 shadow-sm"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              <span>⌨️</span>
+              <span>টাইপ করে লেখো</span>
+            </button>
+          </div>
 
-            {!isTyping ? (
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center">
+            {inputMode === "voice" ? (
               sttSupported ? (
                 <>
                   <button
@@ -515,12 +521,12 @@ export default function PracticePage() {
                   value={typedText}
                   onChange={(e) => setTypedText(e.target.value)}
                   placeholder="এখানে ইংরেজি বাক্যটি টাইপ করো..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 <button
                   type="submit"
                   disabled={!typedText.trim()}
-                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3 rounded-2xl transition-all active:scale-95 text-sm shadow-md shadow-orange-500/20"
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl transition-all active:scale-95 text-sm shadow-md shadow-orange-500/20"
                 >
                   জমা দাও ➔
                 </button>
