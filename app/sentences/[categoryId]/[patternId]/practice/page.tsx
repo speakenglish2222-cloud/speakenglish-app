@@ -13,9 +13,22 @@ type Question = {
   word_bank: string[] | null;
 };
 
+// 🛠️ স্মার্ট নরম্যালাইজেশন (I'm এবং I am এর মতো কন্ট্রাকশন হ্যান্ডেল করার জন্য)
 function normalize(text: string) {
   return text
     .toLowerCase()
+    .replace(/\bi'm\b/g, "i am")
+    .replace(/\bhe's\b/g, "he is")
+    .replace(/\bshe's\b/g, "she is")
+    .replace(/\bit's\b/g, "it is")
+    .replace(/\bthey're\b/g, "they are")
+    .replace(/\bwe're\b/g, "we are")
+    .replace(/\byou're\b/g, "you are")
+    .replace(/\bdon't\b/g, "do not")
+    .replace(/\bdoesn't\b/g, "does not")
+    .replace(/\bdidn't\b/g, "did not")
+    .replace(/\bcan't\b/g, "cannot")
+    .replace(/\bwon't\b/g, "will not")
     .replace(/[.,!?']/g, "")
     .trim()
     .replace(/\s+/g, " ");
@@ -133,6 +146,7 @@ export default function PracticePage() {
       const isCorrect = normalize(transcript) === normalize(current.correct_en);
       
       if (!isCorrect) {
+        // 🔄 উত্তর ভুল হলে প্রশ্নটি লিস্টের শেষে পুনরায় যোগ হবে
         setQuestions((prev) => [...prev, current]);
       }
       
@@ -163,6 +177,7 @@ export default function PracticePage() {
     const isCorrect = normalize(constructed) === normalize(current.correct_en);
 
     if (!isCorrect) {
+      // 🔄 উত্তর ভুল হলে প্রশ্নটি লিস্টের শেষে পুনরায় যোগ হবে
       setQuestions((prev) => [...prev, current]);
     }
 
@@ -282,6 +297,7 @@ export default function PracticePage() {
 
   return (
     <main className="min-h-screen bg-slate-50 pt-6 pb-28 px-4 max-w-md mx-auto">
+      {/* Top Bar with Progress */}
       <div className="flex items-center gap-3.5 mb-4 px-1">
         <button
           onClick={() => router.back()}
@@ -307,6 +323,7 @@ export default function PracticePage() {
         </div>
       </div>
 
+      {/* Task Title */}
       <div className="mb-5 px-1">
         <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">
           {current.type === "pronunciation" && "বাক্যটি শুদ্ধভাবে উচ্চারণ করো"}
@@ -315,6 +332,7 @@ export default function PracticePage() {
         </h1>
       </div>
 
+      {/* Type 1: Pronunciation */}
       {current.type === "pronunciation" && (
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl shadow-orange-500/20 flex items-center justify-between gap-4">
@@ -372,6 +390,7 @@ export default function PracticePage() {
         </div>
       )}
 
+      {/* Type 2: Recall */}
       {current.type === "recall" && (
         <div className="space-y-5">
           <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
@@ -442,6 +461,7 @@ export default function PracticePage() {
         </div>
       )}
 
+      {/* Type 3: Fill Blank */}
       {current.type === "fill_blank" && (
         <div className="space-y-4">
           <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm">
@@ -496,6 +516,7 @@ export default function PracticePage() {
         </div>
       )}
 
+      {/* Result Card & Next Action Button */}
       {result && (
         <div className="mt-6 space-y-3">
           <div
