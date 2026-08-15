@@ -23,23 +23,24 @@ export default function ProgressPage() {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
 
+  // ডাইনামিক লেভেল ম্যাপার
   const levelBadges: Record<string, string> = {
-    level1: "A1 (বিগিনার)",
-    level2: "A2 (এলিমেন্টারি)",
-    level3: "B1 (ইন্টারমিডিয়েট)",
-    level4: "B2 (আপার-ইন্টারমিডিয়েট)",
+    level1: "বিগিনার / কিডস ভোকাবুলারি",
+    level2: "এলিমেন্টারি ভোকাবুলারি",
+    level3: "ইন্টারমিডিয়েট কথপোকথন",
+    level4: "এডভান্সড ফ্লুয়েন্সি",
   };
 
   const fetchUserData = async () => {
     setLoading(true);
     
-    // ১. ইউজার প্রোফাইল ডাটা লোড
+    // ১. ইউজার ডাটা ফেচ
     const { data: userData } = await supabase.from("users").select("*").single();
     
     if (userData) {
       setProfile(userData);
 
-      // ২. ভোকাবুলারি স্ট্যাট
+      // ২. ভোকাবুলারি স্ট্যাট গণনা
       const { count: learnedCount } = await supabase
         .from("user_word_progress")
         .select("*", { count: "exact", head: true })
@@ -52,7 +53,7 @@ export default function ProgressPage() {
         .eq("user_id", userData.id)
         .eq("is_bookmarked", true);
 
-      // ৩. সেন্টেন্স স্ট্যাট
+      // ৩. সেন্টেন্স স্ট্যাট গণনা
       const { count: patternCount } = await supabase
         .from("user_pattern_progress")
         .select("*", { count: "exact", head: true })
@@ -72,7 +73,7 @@ export default function ProgressPage() {
         completedCategories: categoryCount || 0,
       });
 
-      // ৪. গত ৭ দিনের অ্যাক্টিভিটি চেক
+      // ৪. গত ৭ দিনের রিয়েল অ্যাক্টিভিটি লগ
       const { data: activityLogs } = await supabase
         .from("user_activity_log")
         .select("activity_date")
@@ -98,18 +99,17 @@ export default function ProgressPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-6 flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
+      <div className="min-h-screen p-6 flex items-center justify-center bg-[#F8FAFC]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#00A86B]"></div>
       </div>
     );
   }
 
-  // যদি ইউজারের নাম সেট না থাকে (First Time Login)
   const isFirstTimeUser = !profile?.display_name || profile?.display_name === "শিক্ষার্থী";
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 p-4 max-w-md mx-auto">
-      {/* First Time or Edit Modal */}
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 p-4 max-w-md mx-auto">
+      {/* First Time / Edit Profile Modal */}
       {(isFirstTimeUser || showEditModal) && profile && (
         <OnboardingModal
           userId={profile.id}
@@ -124,79 +124,91 @@ export default function ProgressPage() {
         />
       )}
 
-      {/* Header Profile Section */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-3xl p-5 shadow-lg mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Hi, {profile?.display_name || "শিক্ষার্থী"} 👋</h1>
-            <span className="inline-block mt-1 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium">
-              🏷️ লেভেল: {levelBadges[profile?.skill_level || "level1"]}
-            </span>
+      {/* Dynamic App-Matched Header Card */}
+      <div className="bg-gradient-to-r from-[#00A86B] to-[#028A58] text-white rounded-[28px] p-6 shadow-xl shadow-[#00A86B]/20 mb-5 relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="text-xs font-medium text-white/80">স্বাগতম</div>
+          <div className="flex items-center justify-between mt-0.5">
+            <h1 className="text-2xl font-bold">Hi, {profile?.display_name || "শিক্ষার্থী"} 👋</h1>
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white px-3 py-1 rounded-full text-xs font-semibold transition border border-white/20"
+            >
+              ⚙️ চেঞ্জ
+            </button>
           </div>
-          <button
-            onClick={() => setShowEditModal(true)}
-            className="bg-white text-emerald-700 font-semibold px-3 py-1.5 rounded-xl text-xs shadow hover:bg-emerald-50 transition"
-          >
-            ⚙️ চেঞ্জ
-          </button>
-        </div>
 
-        {/* Streak Counter */}
-        <div className="mt-4 pt-4 border-t border-white/20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🔥</span>
-            <div>
-              <div className="text-lg font-bold leading-none">{profile?.streak_count || 0} দিন</div>
-              <div className="text-[11px] opacity-80">একটানা প্র্যাকটিস স্ট্রিক</div>
+          {/* Dynamic Skill Level Badge */}
+          <div className="mt-3 inline-flex items-center bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 text-xs font-semibold">
+            {levelBadges[profile?.skill_level || "level1"]}
+          </div>
+
+          {/* Dynamic Streak Pill */}
+          <div className="mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between">
+            <div className="inline-flex items-center gap-1.5 bg-black/15 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-amber-300">
+              🔥 {profile?.streak_count || 0} দিন
             </div>
           </div>
         </div>
       </div>
 
-      {/* Challenge Tracker */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="font-bold text-gray-800 text-sm">৬০ দিনের চ্যালেঞ্জ</h3>
-          <span className="text-xs font-bold text-emerald-600">১৭%</span>
+      {/* 60-Day Challenge Box */}
+      <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 mb-5">
+        <div className="flex justify-between items-center mb-1.5">
+          <h3 className="font-bold text-gray-800 text-base">৬০ দিনের চ্যালেঞ্জ</h3>
+          <span className="text-xs font-bold text-[#00A86B] bg-[#E8F8F2] px-2.5 py-1 rounded-full">
+            ১৭%
+          </span>
         </div>
-        <p className="text-xs text-gray-500 mb-2">১০ তম দিনের লক্ষ্য পূরণ বাকি 🎯</p>
-        <div className="w-full bg-gray-100 rounded-full h-2.5">
-          <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: "17%" }}></div>
+        <p className="text-xs text-gray-500 mb-3">১০ তম দিনের লক্ষ্য পূরণ বাকি 🎯</p>
+        <div className="w-full bg-gray-100 rounded-full h-3">
+          <div
+            className="bg-[#00A86B] h-3 rounded-full transition-all duration-500"
+            style={{ width: "17%" }}
+          ></div>
         </div>
       </div>
 
-      {/* Statistics Grid */}
-      <h3 className="font-bold text-gray-800 mb-2 text-sm">আপনার অর্জনসমূহ</h3>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="text-2xl mb-1">📚</div>
-          <div className="text-xl font-bold text-gray-800">{stats.learnedWords} টি</div>
-          <div className="text-xs text-gray-500 mt-0.5">শেখা শব্দ</div>
-          <div className="text-[11px] text-amber-600 mt-2 font-medium">★ {stats.bookmarkedWords}টি বুকমার্ক</div>
+      {/* Dynamic Learning Statistics Cards */}
+      <h3 className="font-bold text-gray-800 mb-3 text-sm px-1">আপনার শিক্ষা ড্যাশবোর্ড</h3>
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        {/* Words Card */}
+        <div className="bg-gradient-to-br from-[#7C4DFF] to-[#651FFF] text-white p-5 rounded-[24px] shadow-lg shadow-[#7C4DFF]/20 relative overflow-hidden">
+          <div className="text-3xl mb-2">📚</div>
+          <div className="text-2xl font-bold">{stats.learnedWords} টি</div>
+          <div className="text-xs text-white/80 mt-1 font-medium">শেখা শব্দ</div>
+          <div className="mt-3 text-[11px] bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-lg inline-block font-semibold">
+            ★ {stats.bookmarkedWords} বুকমার্ক
+          </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="text-2xl mb-1">💬</div>
-          <div className="text-xl font-bold text-gray-800">{stats.completedPatterns} টি</div>
-          <div className="text-xs text-gray-500 mt-0.5">শেখা বাক্য/প্যাটার্ন</div>
-          <div className="text-[11px] text-emerald-600 mt-2 font-medium">✓ {stats.completedCategories}টি ক্যাটাগরি শেষ</div>
+        {/* Sentences Card */}
+        <div className="bg-gradient-to-br from-[#FF6D00] to-[#FF9100] text-white p-5 rounded-[24px] shadow-lg shadow-[#FF6D00]/20 relative overflow-hidden">
+          <div className="text-3xl mb-2">💬</div>
+          <div className="text-2xl font-bold">{stats.completedPatterns} টি</div>
+          <div className="text-xs text-white/80 mt-1 font-medium">শেখা বাক্য</div>
+          <div className="mt-3 text-[11px] bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-lg inline-block font-semibold">
+            ✓ {stats.completedCategories} ক্যাটাগরি
+          </div>
         </div>
       </div>
 
       {/* Weekly Activity Grid */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <h3 className="font-bold text-gray-800 text-sm mb-3">গত ৭ দিনের অ্যাক্টিভিটি</h3>
+      <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100">
+        <h3 className="font-bold text-gray-800 text-sm mb-3.5">গত ৭ দিনের অ্যাক্টিভিটি</h3>
         <div className="flex justify-between items-center px-1">
-          {["শনি", "রবি", "সোম", "মঙ্গল", "বুধ", "বৃহ", "শুক্রবার"].map((day, idx) => (
-            <div key={idx} className="flex flex-col items-center gap-1.5">
+          {["শনি", "রবি", "সোম", "মঙ্গল", "বুধ", "বৃহ", "শুক্র"].map((day, idx) => (
+            <div key={idx} className="flex flex-col items-center gap-2">
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                  weeklyLogs[idx] ? "bg-emerald-500 text-white shadow-sm shadow-emerald-200" : "bg-gray-100 text-gray-400"
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
+                  weeklyLogs[idx]
+                    ? "bg-[#00A86B] text-white shadow-md shadow-[#00A86B]/30 scale-105"
+                    : "bg-gray-100 text-gray-400"
                 }`}
               >
                 {weeklyLogs[idx] ? "✓" : ""}
               </div>
-              <span className="text-[10px] text-gray-500">{day}</span>
+              <span className="text-[11px] text-gray-500 font-medium">{day}</span>
             </div>
           ))}
         </div>
