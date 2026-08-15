@@ -1,55 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import OnboardingModal from "@/components/OnboardingModal";
-
-export default function ProgressPageUI() {
-  const [showEditModal, setShowEditModal] = useState(false);
-
-  // ডামি ডেটা (UI দেখার জন্য)
-  const dummyUser = {
+export default function ProgressPageOnlyUI() {
+  // UI টেস্টের জন্য ডামি ডাটা
+  const user = {
     display_name: "রাহাত",
     skill_level_text: "বিগিনার / কিডস ভোকাবুলারি",
     streak_count: 5,
   };
 
-  const dummyWeeklyLogs = [true, true, true, false, true, true, false];
+  const weeklyLogs = [true, true, true, false, true, true, false];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 p-4 max-w-md mx-auto">
-      {/* Edit Profile Modal Trigger */}
-      {showEditModal && (
-        <OnboardingModal
-          initialName={dummyUser.display_name}
-          initialLevel="level1"
-          isEditMode={true}
-          onClose={() => setShowEditModal(false)}
-        />
-      )}
-
-      {/* Header Card */}
+      {/* Header Card matching App Color */}
       <div className="bg-gradient-to-r from-[#00A86B] to-[#028A58] text-white rounded-[28px] p-6 shadow-xl shadow-[#00A86B]/20 mb-5 relative overflow-hidden">
         <div className="relative z-10">
           <div className="text-xs font-medium text-white/80">স্বাগতম</div>
           <div className="flex items-center justify-between mt-0.5">
-            <h1 className="text-2xl font-bold">Hi, {dummyUser.display_name} 👋</h1>
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white px-3 py-1 rounded-full text-xs font-semibold transition border border-white/20"
-            >
+            <h1 className="text-2xl font-bold">Hi, {user.display_name} 👋</h1>
+            <button className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white px-3 py-1 rounded-full text-xs font-semibold transition border border-white/20">
               ⚙️ চেঞ্জ
             </button>
           </div>
 
           {/* Skill Level Badge */}
           <div className="mt-3 inline-flex items-center bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 text-xs font-semibold">
-            {dummyUser.skill_level_text}
+            {user.skill_level_text}
           </div>
 
           {/* Streak Pill */}
           <div className="mt-4 pt-3.5 border-t border-white/15 flex items-center justify-between">
             <div className="inline-flex items-center gap-1.5 bg-black/15 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-amber-300">
-              🔥 {dummyUser.streak_count} দিন
+              🔥 {user.streak_count} দিন
             </div>
           </div>
         </div>
@@ -65,7 +47,7 @@ export default function ProgressPageUI() {
         </div>
         <p className="text-xs text-gray-500 mb-3">১০ তম দিনের লক্ষ্য পূরণ বাকি 🎯</p>
         <div className="w-full bg-gray-100 rounded-full h-3">
-          <div className="bg-[#00A86B] h-3 rounded-full w-[17%] transition-all"></div>
+          <div className="bg-[#00A86B] h-3 rounded-full w-[17%]"></div>
         </div>
       </div>
 
@@ -101,12 +83,12 @@ export default function ProgressPageUI() {
             <div key={idx} className="flex flex-col items-center gap-2">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
-                  dummyWeeklyLogs[idx]
+                  weeklyLogs[idx]
                     ? "bg-[#00A86B] text-white shadow-md shadow-[#00A86B]/30 scale-105"
                     : "bg-gray-100 text-gray-400"
                 }`}
               >
-                {dummyWeeklyLogs[idx] ? "✓" : ""}
+                {weeklyLogs[idx] ? "✓" : ""}
               </div>
               <span className="text-[11px] text-gray-500 font-medium">{day}</span>
             </div>
