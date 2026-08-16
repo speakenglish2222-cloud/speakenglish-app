@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getDeviceId } from "@/lib/device";
 import WordCard from "@/components/WordCard";
+import { logActivityAndUpdateStreak } from "@/lib/activity";
 
 type Example = {
   example_en: string;
@@ -236,10 +237,12 @@ export default function WordsPage() {
       .eq("id", userId);
     setDailyPagesUsed(newCount);
 
+    // ⚡ Activity tracking & Streak Update
+    await logActivityAndUpdateStreak(userId);
+
     await loadTab();
     setAdvancing(false);
 
-    // ⚡ কোনো অ্যানিমেশন ছাড়াই পলকে পেজ টপে নিয়ে যাওয়া
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
