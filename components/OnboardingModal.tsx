@@ -62,7 +62,7 @@ export default function OnboardingModal({
   onClose?: () => void;
 }) {
   const [name, setName] = useState(initialName ?? "");
-  const [level, setLevel] = useState(initialLevel ?? "level3");
+  const [level, setLevel] = useState(initialLevel ?? "level1");
   const [goal, setGoal] = useState("10min");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
