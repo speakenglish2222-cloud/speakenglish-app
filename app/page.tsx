@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getDeviceId } from "@/lib/device";
 import TodayPractice from "@/components/TodayPractice";
+import OnboardingModal from "@/components/OnboardingModal";
 
 type UserRow = {
   id: string;
+  name?: string | null;
   device_id: string;
   current_level: string;
   streak_count: number;
@@ -24,26 +26,27 @@ export default function HomePage() {
   const [user, setUser] = useState<UserRow | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // ⚡ অনবোর্ডিং মডালের জন্য নতুন স্টেটসমূহ
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [deviceId, setDeviceId] = useState("");
+
   useEffect(() => {
     async function loadOrCreateUser() {
-      const deviceId = getDeviceId();
-      if (!deviceId) return;
+      const devId = getDeviceId();
+      if (!devId) return;
+      setDeviceId(devId);
 
       const { data: existing } = await supabase
         .from("users")
         .select("*")
-        .eq("device_id", deviceId)
+        .eq("device_id", devId)
         .maybeSingle();
 
       if (existing) {
         setUser(existing as UserRow);
       } else {
-        const { data: created } = await supabase
-          .from("users")
-          .insert({ device_id: deviceId })
-          .select()
-          .single();
-        setUser(created as UserRow);
+        // 🚀 ইউজার না থাকলে স্বয়ংক্রিয়ভাবে ডাটাবেজে রো তৈরি না করে মডাল দেখানো হবে
+        setNeedsOnboarding(true);
       }
       setLoading(false);
     }
@@ -64,11 +67,13 @@ export default function HomePage() {
   const progressPercent = Math.round((daysSinceStart / 60) * 100);
 
   return (
-    <main className="p-5 pt-8 min-h-screen bg-gradient-to-b from-emerald-50/50 via-teal-50/30 to-slate-50">
+    <main className="p-5 pt-8 min-h-screen bg-gradient-to-b from-emerald-50/50 via-teal-50/30 to-slate-50 relative">
       {/* Hero Section with Vibrant Gradient */}
       <section className="bg-gradient-to-r from-teal-600 via-emerald-600 to-green-500 text-white rounded-3xl p-6 mb-5 shadow-lg shadow-teal-600/20">
         <p className="text-sm font-medium opacity-90">স্বাগতম</p>
-        <h1 className="text-2xl font-extrabold mb-3 tracking-wide">Hi, শিক্ষার্থী 👋</h1>
+        <h1 className="text-2xl font-extrabold mb-3 tracking-wide">
+          Hi, {user?.name ? user.name : "শিক্ষার্থী"} 👋
+        </h1>
         <div className="flex flex-wrap gap-2">
           <span className="bg-white/20 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
             {loading ? "..." : LEVEL_LABELS[user?.current_level ?? "level1"]}
@@ -128,6 +133,18 @@ export default function HomePage() {
         <div className="bg-white rounded-3xl p-1 shadow-md shadow-slate-100 border border-slate-100">
           <TodayPractice userId={user.id} />
         </div>
+      )}
+
+      {/* ✨ Onboarding Modal Integration */}
+      {needsOnboarding && (
+        <OnboardingModal
+          mode="onboarding"
+          deviceId={deviceId}
+          onComplete={(newUser) => {
+            setUser(newUser as any);
+            setNeedsOnboarding(false);
+          }}
+        />
       )}
     </main>
   );
