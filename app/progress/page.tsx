@@ -1,181 +1,186 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { getDeviceId } from "@/lib/device";
+import OnboardingModal from "@/components/OnboardingModal";
 
-export default function RedesignedProgressPage() {
-  const [selectedLevel, setSelectedLevel] = useState("B1");
+type UserRow = {
+  id: string;
+  name: string | null;
+  current_level: string;
+  streak_count: number;
+};
 
-  // UI টেস্টের জন্য ডামি ডাটা
-  const user = {
-    display_name: "রাহাত",
-    streak_count: 7,
-    xp_points: 1450,
-  };
+const LEVEL_LABELS: Record<string, string> = {
+  level1: "বিগিনার / কিডস",
+  level2: "বেসিক",
+  level3: "ইন্টারমিডিয়েট",
+  level4: "অ্যাডভান্সড",
+};
 
-  const levels = [
-    { id: "A1", label: "A1 • Beginner" },
-    { id: "A2", label: "A2 • Elementary" },
-    { id: "B1", label: "B1 • Intermediate" },
-    { id: "B2", label: "B2 • Advanced" },
-  ];
+export default function ProgressPage() {
+  const [user, setUser] = useState<UserRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
 
-  const weeklyActivity = [
-    { day: "শনি", score: 80 },
-    { day: "রবি", score: 100 },
-    { day: "সোম", score: 40 },
-    { day: "মঙ্গল", score: 90 },
-    { day: "বুধ", score: 60 },
-    { day: "বৃহ", score: 100 },
-    { day: "শুক্র", score: 20 },
-  ];
+  // স্ট্যাট কাউন্ট
+  const [completedWords, setCompletedWords] = useState(0);
+  const [completedPatterns, setCompletedPatterns] = useState(0);
+
+  useEffect(() => {
+    async function fetchProgress() {
+      const deviceId = getDeviceId();
+      if (!deviceId) return;
+
+      // ১. ইউজার ইনফো আনা
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id, name, current_level, streak_count")
+        .eq("device_id", deviceId)
+        .maybeSingle();
+
+      if (userData) {
+        setUser(userData as UserRow);
+
+        // ২. সম্পন্ন হওয়া শব্দের সংখ্যা গণনা
+        const { count: wordCount } = await supabase
+          .from("user_word_progress")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userData.id)
+          .eq("status", "mastered");
+
+        setCompletedWords(wordCount ?? 0);
+
+        // ৩. সম্পন্ন হওয়া সেন্টেন্স প্যাটার্নের সংখ্যা গণনা
+        const { count: patternCount } = await supabase
+          .from("user_pattern_progress")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userData.id)
+          .eq("status", "completed");
+
+        setCompletedPatterns(patternCount ?? 0);
+      }
+
+      setLoading(false);
+    }
+
+    fetchProgress();
+  }, []);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen p-5 pt-8 max-w-md mx-auto space-y-4 bg-slate-50">
+        <div className="h-32 bg-slate-200/70 rounded-3xl animate-pulse" />
+        <div className="h-24 bg-slate-200/70 rounded-3xl animate-pulse" />
+        <div className="h-24 bg-slate-200/70 rounded-3xl animate-pulse" />
+      </main>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-slate-100 pb-28 p-4 max-w-md mx-auto font-sans">
-      {/* Top Bar */}
-      <div className="flex justify-between items-center mb-6 pt-2">
-        <div>
-          <span className="text-[11px] font-bold tracking-widest text-emerald-400 uppercase">
-            Analytics Overview
-          </span>
-          <h1 className="text-2xl font-black text-white tracking-tight">লার্নিং প্রোগ্রেস</h1>
-        </div>
-        <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/80 px-3 py-1.5 rounded-full text-xs font-bold text-amber-400 shadow-inner">
-          ⚡ {user.xp_points} XP
-        </div>
-      </div>
+    <main className="p-5 pt-8 min-h-screen bg-slate-50 max-w-md mx-auto space-y-5">
+      <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">
+        আমার অগ্রগতি (Progress)
+      </h1>
 
-      {/* Hero Profile & Streak Card */}
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-5 border border-slate-700/60 shadow-2xl mb-6 relative overflow-hidden">
+      {/* Profile & Level Card */}
+      <section className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm relative overflow-hidden">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-xl">
-              {user.display_name.charAt(0)}
-            </div>
-            <div>
-              <h2 className="font-bold text-white text-base">{user.display_name}</h2>
-              <p className="text-xs text-slate-400">নিয়মিত লার্নার</p>
-            </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              শিক্ষার্থী
+            </p>
+            <h2 className="text-xl font-black text-slate-800">
+              {user?.name || "ব্যবহারকারী"}
+            </h2>
           </div>
-          <div className="bg-amber-500/10 border border-amber-500/20 px-3.5 py-1.5 rounded-2xl text-xs font-bold text-amber-400 flex items-center gap-1.5">
-            🔥 {user.streak_count} দিন স্ট্রিক
-          </div>
-        </div>
-
-        {/* Level Selector Segment */}
-        <div className="mt-4 pt-4 border-t border-slate-700/50">
-          <label className="text-[11px] font-semibold text-slate-400 mb-2 block">
-            বর্তমান লেভেল (CEFR Framework):
-          </label>
-          <div className="grid grid-cols-4 gap-1.5 bg-slate-950/60 p-1 rounded-2xl border border-slate-800">
-            {levels.map((lvl) => (
-              <button
-                key={lvl.id}
-                onClick={() => setSelectedLevel(lvl.id)}
-                className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                  selectedLevel === lvl.id
-                    ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {lvl.id}
-              </button>
-            ))}
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xl shadow-md">
+            👤
           </div>
         </div>
-      </div>
 
-      {/* Circular Progress & Daily Goal Section */}
-      <div className="bg-slate-800/50 rounded-3xl p-5 border border-slate-700/50 backdrop-blur-md mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-white text-sm">৬০ দিনের আর্চিজ চ্যালেঞ্জ</h3>
-          <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-            Day 12 of 60
-          </span>
-        </div>
-
-        <div className="flex items-center gap-5 my-2">
-          {/* Circular Chart */}
-          <div className="relative w-24 h-24 flex items-center justify-center flex-shrink-0">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-              <path
-                className="text-slate-700"
-                strokeWidth="3.5"
-                stroke="currentColor"
-                fill="none"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <path
-                className="text-emerald-400"
-                strokeDasharray="20, 100"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                stroke="currentColor"
-                fill="none"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-            </svg>
-            <div className="absolute text-center">
-              <span className="text-xl font-black text-white">20%</span>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold text-slate-200">আজকের প্রোগ্রেস: ৪/৫ কাজ সম্পন্ন</h4>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              আজকে আর ১টি সেন্টেন্স প্যাটার্ন শেষ করলেই আপনার দৈনিক গোল পূরণ হবে।
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase">
+              বর্তমান লেভেল
+            </p>
+            <p className="text-sm font-extrabold text-indigo-600">
+              {LEVEL_LABELS[user?.current_level ?? "level1"]}
             </p>
           </div>
+
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl transition-all active:scale-95"
+          >
+            ✏️ লেভেল পরিবর্তন
+          </button>
         </div>
-      </div>
+      </section>
 
-      {/* Analytics Metric Cards Grid */}
-      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
-        শিক্ষার বিস্তারিত পরিসংখ্যান
-      </h3>
-
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        {/* Vocabulary Box */}
-        <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700/40 relative">
-          <div className="text-xs font-bold text-purple-400 mb-1">ভোকাবুলারি</div>
-          <div className="text-2xl font-black text-white">২৮ টি</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">শব্দ আয়ত্ত করেছেন</div>
-          <div className="mt-3 pt-2 border-t border-slate-700/40 text-[10px] text-slate-300 flex items-center gap-1">
-            <span className="text-amber-400">★</span> ৬টি সেভ করা
+      {/* Stats Cards */}
+      <section className="grid grid-cols-2 gap-4">
+        {/* Streak Stats */}
+        <div className="bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-3xl p-5 shadow-lg shadow-orange-500/20">
+          <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl mb-3">
+            🔥
           </div>
+          <p className="text-2xl font-black">{user?.streak_count ?? 0} দিন</p>
+          <p className="text-xs text-amber-100 font-medium mt-0.5">
+            ডেইলি স্ট্রিক
+          </p>
         </div>
 
-        {/* Sentences Box */}
-        <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700/40 relative">
-          <div className="text-xs font-bold text-cyan-400 mb-1">বাক্য প্র্যাকটিস</div>
-          <div className="text-2xl font-black text-white">১৬ টি</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">প্যাটার্ন সম্পন্ন</div>
-          <div className="mt-3 pt-2 border-t border-slate-700/40 text-[10px] text-slate-300 flex items-center gap-1">
-            <span className="text-emerald-400">✓</span> ৩টি ক্যাটাগরি
+        {/* Mastered Words Stats */}
+        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-3xl p-5 shadow-lg shadow-indigo-500/20">
+          <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl mb-3">
+            📚
           </div>
+          <p className="text-2xl font-black">{completedWords}</p>
+          <p className="text-xs text-indigo-100 font-medium mt-0.5">
+            শেখা শব্দাবলী
+          </p>
         </div>
-      </div>
+      </section>
 
-      {/* Professional Activity Bar Chart */}
-      <div className="bg-slate-800/40 rounded-3xl p-5 border border-slate-700/40">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-white text-sm">সাপ্তাহিক অ্যাক্টিভিটি গ্রাফ</h3>
-          <span className="text-[10px] text-slate-400 font-semibold">গত ৭ দিন</span>
+      {/* Completed Sentence Patterns */}
+      <section className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl flex-shrink-0">
+          💬
         </div>
+        <div>
+          <p className="text-xl font-black text-slate-800">
+            {completedPatterns} টি প্যাটার্ন
+          </p>
+          <p className="text-xs text-slate-500 font-medium">
+            বাক্য তৈরির অনুশীলন সম্পন্ন হয়েছে
+          </p>
+        </div>
+      </section>
 
-        <div className="flex justify-between items-end h-28 pt-4 px-1">
-          {weeklyActivity.map((item, idx) => (
-            <div key={idx} className="flex flex-col items-center gap-2 h-full justify-end">
-              <div className="w-6 bg-slate-900 rounded-t-lg h-full relative overflow-hidden flex items-end">
-                <div
-                  className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-lg transition-all duration-500"
-                  style={{ height: `${item.score}%` }}
-                ></div>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium">{item.day}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      {/* 🚀 Edit Mode (Reusable Modal Integration) */}
+      {showEditModal && user && (
+        <OnboardingModal
+          mode="edit"
+          userId={user.id}
+          initialName={user.name ?? ""}
+          initialLevel={user.current_level}
+          onComplete={(updatedUser) => {
+            setUser((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    name: updatedUser.name,
+                    current_level: updatedUser.current_level,
+                  }
+                : null
+            );
+            setShowEditModal(false);
+          }}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
+    </main>
   );
 }
