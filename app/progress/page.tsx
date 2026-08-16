@@ -110,13 +110,12 @@ export default function ProgressPage() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const isTodayActive = user?.last_active_date === todayStr;
 
-  // 📊 ডায়নামিক প্রোগ্রেস পার্সেন্টেজ হিসাব (ধরে নিচ্ছি টার্গেট ১০০টি আইটেম)
-  const totalItems = completedWords + completedPatterns * 2;
-  const targetGoal = 100;
-  const overallPercentage = Math.min(100, Math.round((totalItems / targetGoal) * 100));
+  // পার্সেন্টেজ হিসাব
+  const totalScore = completedWords + completedPatterns * 2;
+  const overallPercentage = Math.min(100, Math.round((totalScore / 100) * 100));
 
   return (
-    <main className="p-4 pt-6 pb-24 min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/20 to-slate-100 max-w-md mx-auto space-y-5">
+    <main className="p-4 pt-6 pb-24 min-h-screen bg-slate-50 max-w-md mx-auto space-y-5">
       {/* Title */}
       <div className="flex items-center justify-between px-1">
         <div>
@@ -132,7 +131,7 @@ export default function ProgressPage() {
         </div>
       </div>
 
-      {/* Dynamic Profile Card */}
+      {/* Profile Card */}
       <section className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm relative overflow-hidden">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3.5">
@@ -150,7 +149,6 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        {/* Dynamic Level Tag & Edit Button */}
         <div className={`p-3.5 rounded-2xl border ${currentLevelInfo.bg} ${currentLevelInfo.border} flex items-center justify-between`}>
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase">
@@ -171,9 +169,8 @@ export default function ProgressPage() {
         </div>
       </section>
 
-      {/* Vibrant Stats Grid */}
+      {/* Stats Grid */}
       <section className="grid grid-cols-2 gap-4">
-        {/* Daily Streak Card */}
         <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 text-white rounded-3xl p-5 shadow-lg shadow-orange-500/20 relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-3">
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shadow-inner">
@@ -193,7 +190,6 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        {/* Mastered Words Card */}
         <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 text-white rounded-3xl p-5 shadow-lg shadow-indigo-500/20 relative overflow-hidden flex flex-col justify-between">
           <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl mb-3 shadow-inner">
             📚
@@ -229,48 +225,71 @@ export default function ProgressPage() {
         </div>
       </section>
 
-      {/* 📊 বড় ও ডায়নামিক প্রোগ্রেস গ্রাফ (Mastery Graph Bar) */}
-      <section className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
+      {/* 📺 🌊 টিভি সংবাদের মতো বড় ও ডায়নামিক লাইভ ওয়েভ গ্রাফ (Live Animated Wave Graph) */}
+      <section className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden border border-indigo-500/30">
+        
+        {/* টপ হেডার ও লাইভ ব্লিংকিং ডট */}
+        <div className="flex items-center justify-between mb-4 z-10 relative">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-base">
-              সামগ্রিক অগ্রগতি 📊
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-[11px] font-black text-emerald-400 uppercase tracking-widest">
+                LIVE ACTIVITY GRAPH
+              </span>
+            </div>
+            <h3 className="text-xl font-black text-white mt-1">
+              লার্নিং ফ্রিকোয়েন্সি 📊
             </h3>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">
-              শব্দ ও বাক্যের ওপর অর্জিত দক্ষতা
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-black text-amber-400">
+              {overallPercentage}%
+            </p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">
+              দক্ষতার লেভেল
             </p>
           </div>
-          <span className="text-sm font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
-            {overallPercentage}%
-          </span>
         </div>
 
-        {/* Dynamic Progress Bar */}
-        <div className="space-y-2">
-          <div className="w-full bg-slate-100 rounded-full h-4 overflow-hidden p-0.5 border border-slate-200/50">
-            <div
-              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-700 ease-out shadow-sm"
-              style={{ width: `${overallPercentage}%` }}
-            />
-          </div>
-          <div className="flex justify-between items-center text-[11px] text-slate-400 font-bold px-1">
-            <span>শুরু</span>
-            <span>লক্ষ্য: ১০০%</span>
-          </div>
+        {/* 🌊 অ্যানিমেটেড ওয়েভ সাউন্ড-গ্রাফ উইজেট */}
+        <div className="h-32 w-full my-2 flex items-end justify-between gap-1.5 px-2 relative z-10">
+          {[40, 75, 45, 90, 60, 100, 70, 85, 50, 95, 65, 80, 55, 90, 75].map(
+            (height, idx) => (
+              <div
+                key={idx}
+                className="w-full bg-gradient-to-t from-indigo-500 via-purple-500 to-amber-400 rounded-full transition-all duration-500 animate-pulse"
+                style={{
+                  height: `${Math.max(15, (height * (overallPercentage || 25)) / 100)}%`,
+                  animationDelay: `${idx * 150}ms`,
+                  animationDuration: "1.2s",
+                }}
+              />
+            )
+          )}
         </div>
+
+        {/* নিচের গ্রিড ও ক্যাপশন */}
+        <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-medium text-slate-400 z-10 relative">
+          <span>📉 নরমাল স্পিড</span>
+          <span className="text-amber-300 font-bold">⚡ রিয়েল-টাইম ডায়নামিক</span>
+          <span>📈 হাই পিক</span>
+        </div>
+
+        {/* ব্যাকগ্রাউন্ড গ্লো ইফেক্ট */}
+        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
       </section>
 
       {/* Motivational Daily Status Card */}
-      <section className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-3xl p-5 shadow-xl flex items-center justify-between">
+      <section className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm flex items-center justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
             💡 আজকের টিপস
           </p>
-          <p className="text-xs text-slate-300 font-medium max-w-[220px]">
+          <p className="text-xs text-slate-600 font-medium max-w-[220px]">
             প্রতিদিন অন্তত ৫টি করে শব্দ ও ১টি করে বাক্য রিভিশন দিন!
           </p>
         </div>
-        <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl border border-white/10">
+        <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl flex-shrink-0">
           ⚡
         </div>
       </section>
