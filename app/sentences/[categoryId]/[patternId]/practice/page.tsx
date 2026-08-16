@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getDeviceId } from "@/lib/device";
+import { logActivityAndUpdateStreak } from "@/lib/activity";
 
 type Question = {
   id: number;
@@ -248,6 +249,9 @@ export default function PracticePage() {
       { onConflict: "user_id,category_id" }
     );
 
+    // ⚡ Activity tracking & Streak Update
+    await logActivityAndUpdateStreak(userId);
+
     setFinished(true);
   }
 
@@ -367,7 +371,6 @@ export default function PracticePage() {
             </button>
           </div>
 
-          {/* 🔘 স্পষ্ট টগল অপশন বাটন দুটি */}
           <div className="flex bg-slate-200/70 p-1.5 rounded-2xl gap-1">
             <button
               type="button"
@@ -465,7 +468,6 @@ export default function PracticePage() {
             </p>
           </div>
 
-          {/* 🔘 স্পষ্ট টগল অপশন বাটন দুটি */}
           <div className="flex bg-slate-200/70 p-1.5 rounded-2xl gap-1">
             <button
               type="button"
@@ -536,123 +538,104 @@ export default function PracticePage() {
             {heard && (
               <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/60">
                 <p className="text-xs font-medium text-slate-400">তুমি বলেছ/লিখেছ:</p>
-                <p className="text-sm font-bold text-slate-800 mt-0.5">
-                  "{heard}"
-                </p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">"{heard}"</p>
               </div>
             )}
           </div>
-
-          {!showReveal ? (
-            <button
-              onClick={() => setShowReveal(true)}
-              className="w-full bg-white border border-slate-200/80 text-orange-600 font-bold py-3.5 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center gap-2"
-            >
-              <span>ইংরেজি দেখো</span>
-              <span>👁</span>
-            </button>
-          ) : (
-            <div className="bg-orange-50 border border-orange-200/80 rounded-3xl p-5 text-center space-y-3">
-              <span className="text-[10px] font-bold text-orange-600 tracking-wider uppercase">
-                সঠিক ইংরেজি
-              </span>
-              <p className="font-extrabold text-orange-900 text-lg">
-                {current.correct_en}
-              </p>
-              {!result && (
-                <button
-                  onClick={markSelfConfirmed}
-                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all active:scale-95 text-sm"
-                >
-                  বুঝেছি ✓
-                </button>
-              )}
-            </div>
-          )}
         </div>
       )}
 
-      {/* Type 3: Fill Blank */}
+      {/* Type 3: Fill Blank / Word Order */}
       {current.type === "fill_blank" && (
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm">
-            <span className="text-[10px] font-extrabold text-orange-600 bg-orange-100/80 px-2.5 py-0.5 rounded-full tracking-wider uppercase mb-2 inline-block">
-              অর্থ
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
+            <span className="text-[10px] font-extrabold text-orange-600 bg-orange-100/80 px-2.5 py-1 rounded-full tracking-wider uppercase mb-2 inline-block">
+              বাংলা অর্থ
             </span>
-            <p className="font-bold text-slate-800 text-lg leading-snug">
+            <p className="font-extrabold text-slate-800 text-lg leading-snug">
               {current.prompt_bn}
             </p>
           </div>
 
-          <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-4 min-h-[90px] flex flex-wrap gap-2 items-center">
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm min-h-[90px] flex flex-wrap gap-2 items-center">
             {answerWords.length === 0 ? (
-              <p className="text-xs font-semibold text-slate-400 w-full text-center">
-                নিচ থেকে শব্দ বেছে নিয়ে বাক্য সাজাও
+              <p className="text-xs text-slate-400 font-medium w-full text-center">
+                নিচের শব্দগুলোতে চাপ দিয়ে বাক্য সাজাও
               </p>
             ) : (
               answerWords.map((w, i) => (
                 <button
                   key={i}
                   onClick={() => tapAnswerWord(w, i)}
-                  className="bg-orange-500 text-white px-3.5 py-2 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
+                  className="bg-orange-50 border border-orange-200 text-orange-700 font-bold px-3.5 py-2 rounded-xl text-sm shadow-sm active:scale-95 transition-all"
                 >
-                  <span>{w}</span>
-                  <span className="text-xs opacity-70">✕</span>
+                  {w}
                 </button>
               ))
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 justify-center py-2">
+          <div className="flex flex-wrap gap-2 justify-center pt-2">
             {bankWords.map((w, i) => (
               <button
                 key={i}
                 onClick={() => tapBankWord(w, i)}
-                className="bg-white border border-slate-200 text-slate-700 hover:border-orange-300 hover:text-orange-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all"
+                className="bg-white border border-slate-200 text-slate-700 font-bold px-3.5 py-2 rounded-xl text-sm shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
               >
                 {w}
               </button>
             ))}
           </div>
 
-          {!result && (
+          {answerWords.length > 0 && (
             <button
               onClick={checkFillBlank}
-              disabled={answerWords.length === 0}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/25 transition-all active:scale-95 disabled:opacity-50"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-2xl transition-all text-sm shadow-md shadow-orange-500/20 active:scale-95 mt-2"
             >
-              চেক করো
+              উত্তর যাচাই করো ➔
             </button>
           )}
         </div>
       )}
 
-      {/* Result Card & Next Action Button */}
+      {/* Result Bottom Sheet */}
       {result && (
-        <div className="mt-6 space-y-3">
-          <div
-            className={`rounded-2xl p-4 text-center font-bold border transition-all ${
-              result === "correct"
-                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                : "bg-rose-50 border-rose-200 text-rose-700"
-            }`}
-          >
-            <p className="text-lg">
-              {result === "correct" ? "✅ একদম সঠিক!" : "❌ ভুল হয়েছে"}
-            </p>
-            {result === "wrong" && (
-              <p className="text-xs mt-1.5 font-medium opacity-90">
-                প্রশ্নটি আবার প্র্যাকটিস করার জন্য তালিকার শেষে যোগ করা হয়েছে।
-              </p>
-            )}
+        <div className="fixed inset-x-0 bottom-0 bg-white border-t border-slate-200 p-5 rounded-t-3xl shadow-2xl z-50 max-w-md mx-auto animate-in slide-in-from-bottom duration-200">
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl font-bold ${
+                result === "correct"
+                  ? "bg-emerald-100 text-emerald-600"
+                  : "bg-rose-100 text-rose-600"
+              }`}
+            >
+              {result === "correct" ? "✓" : "✕"}
+            </div>
+            <div>
+              <h3
+                className={`font-black text-base ${
+                  result === "correct" ? "text-emerald-700" : "text-rose-700"
+                }`}
+              >
+                {result === "correct" ? "চমৎকার! সঠিক উত্তর" : "ভুল হয়েছে!"}
+              </h3>
+              {result === "wrong" && (
+                <p className="text-xs text-slate-500 font-medium">
+                  সঠিক বাক্য: <span className="font-bold text-slate-800">{current.correct_en}</span>
+                </p>
+              )}
+            </div>
           </div>
 
           <button
             onClick={handleNextQuestion}
-            className="w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-bold py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
+            className={`w-full py-3.5 rounded-2xl text-white font-bold transition-all text-sm shadow-md ${
+              result === "correct"
+                ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                : "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20"
+            }`}
           >
-            <span>পরবর্তী প্রশ্ন</span>
-            <span className="text-lg">➔</span>
+            পরবর্তী ➔
           </button>
         </div>
       )}
