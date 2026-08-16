@@ -110,7 +110,7 @@ export default function OnboardingModal({
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="যেমন: রাহাত"
+          placeholder="যেমন: স্বপ্ন দেব "
           className="w-full border border-gray-200 rounded-xl px-4 py-2.5 mb-5 focus:outline-none focus:ring-2 focus:ring-brand"
         />
 
