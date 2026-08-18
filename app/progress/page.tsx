@@ -33,14 +33,14 @@ const LEVEL_CONFIG: Record<
     badge: "from-sky-500 to-blue-600",
   },
   level3: {
-    label: "🟡 ইন্টারমিডিয়েট",
+    label: " ইন্টারমিডিয়েট",
     bg: "bg-amber-50",
     text: "text-amber-700",
     border: "border-amber-200",
     badge: "from-amber-500 to-orange-600",
   },
   level4: {
-    label: "🔴 অ্যাডভান্সড",
+    label: "👑 অ্যাডভান্সড",
     bg: "bg-rose-50",
     text: "text-rose-700",
     border: "border-rose-200",
