@@ -19,21 +19,21 @@ const LEVEL_CONFIG: Record<
   { label: string; bg: string; text: string; border: string; badge: string }
 > = {
   level1: {
-    label: "🟢 বিগিনার / কিডস",
+    label: "🐣 বিগিনার / কিডস",
     bg: "bg-emerald-50",
     text: "text-emerald-700",
     border: "border-emerald-200",
     badge: "from-emerald-500 to-teal-600",
   },
   level2: {
-    label: "🔵 বেসিক",
+    label: "📘 বেসিক",
     bg: "bg-sky-50",
     text: "text-sky-700",
     border: "border-sky-200",
     badge: "from-sky-500 to-blue-600",
   },
   level3: {
-    label: " ইন্টারমিডিয়েট",
+    label: "🚀 ইন্টারমিডিয়েট",
     bg: "bg-amber-50",
     text: "text-amber-700",
     border: "border-amber-200",
