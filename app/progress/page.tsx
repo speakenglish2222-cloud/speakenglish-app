@@ -14,16 +14,42 @@ type UserRow = {
   challenge_start_date: string;
 };
 
-const LEVEL_LABELS: Record<string, string> = {
-  level1: "বিগিনার / কিডস ভোকাবুলারি",
-  level2: "বেসিক ভোকাবুলারি",
-  level3: "ইন্টারমিডিয়েট (স্পোকেন ও ক্যারিয়ার)",
-  level4: "অ্যাডভান্সড ভোকাবুলারি",
+const LEVEL_CONFIG: Record<
+  string,
+  { label: string; bg: string; text: string; border: string; badge: string }
+> = {
+  level1: {
+    label: "🟢 বিগিনার / কিডস",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+    badge: "from-emerald-500 to-teal-600",
+  },
+  level2: {
+    label: "🔵 বেসিক",
+    bg: "bg-sky-50",
+    text: "text-sky-700",
+    border: "border-sky-200",
+    badge: "from-sky-500 to-blue-600",
+  },
+  level3: {
+    label: "🟡 ইন্টারমিডিয়েট",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    border: "border-amber-200",
+    badge: "from-amber-500 to-orange-600",
+  },
+  level4: {
+    label: "🔴 অ্যাডভান্সড",
+    bg: "bg-rose-50",
+    text: "text-rose-700",
+    border: "border-rose-200",
+    badge: "from-rose-500 to-pink-600",
+  },
 };
 
 const WEEKDAY_LABELS_BN = ["শনি", "রবি", "সোম", "মঙ্গল", "বুধ", "বৃহস্পতি", "শুক্র"];
-// getDay(): 0=রবি,1=সোম,...,6=শনি — উপরের অ্যারের ইনডেক্সে ম্যাপ করার জন্য
-const JS_DAY_TO_LABEL_INDEX = [1, 2, 3, 4, 5, 6, 0]; // রবি..শনি -> লেবেল ইনডেক্স
+const JS_DAY_TO_LABEL_INDEX = [1, 2, 3, 4, 5, 6, 0];
 
 function dateStr(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -111,32 +137,36 @@ export default function ProgressPage() {
 
   if (loading) {
     return (
-      <main className="p-5 pt-8">
-        <p className="text-muted">লোড হচ্ছে...</p>
+      <main className="min-h-screen p-5 pt-8 max-w-md mx-auto space-y-4 bg-slate-50">
+        <div className="h-44 bg-slate-200/70 rounded-3xl animate-pulse" />
+        <div className="h-28 bg-slate-200/70 rounded-3xl animate-pulse" />
+        <div className="h-32 bg-slate-200/70 rounded-3xl animate-pulse" />
       </main>
     );
   }
 
   if (!user) {
     return (
-      <main className="p-5 pt-8">
-        <p className="text-muted">
+      <main className="p-5 pt-12 text-center max-w-md mx-auto">
+        <p className="text-slate-500 font-semibold">
           প্রথমে হোম পেজে গিয়ে আপনার প্রোফাইল সেটআপ করুন।
         </p>
       </main>
     );
   }
 
+  const currentLevelInfo =
+    LEVEL_CONFIG[user.current_level] ?? LEVEL_CONFIG.level1;
+
   const daysSinceStart = Math.min(
     60,
     Math.floor(
-      (Date.now() - new Date(user.challenge_start_date).getTime()) /
+      (Date.now() - new Date(user.challenge_start_date || Date.now()).getTime()) /
         (1000 * 60 * 60 * 24)
     ) + 1
   );
   const progressPercent = Math.round((daysSinceStart / 60) * 100);
 
-  // গত ৭ দিনের বার তৈরি করা (শনি → শুক্র ক্রমে)
   const today = new Date();
   const last7: { label: string; active: boolean }[] = new Array(7);
   for (let i = 0; i < 7; i++) {
@@ -151,79 +181,145 @@ export default function ProgressPage() {
   }
 
   return (
-    <main className="p-5 pt-8 pb-24">
-      <h1 className="text-xl font-bold mb-4">প্রোগ্রেস ড্যাশবোর্ড</h1>
+    <main className="p-4 pt-6 pb-24 min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/20 to-slate-100 max-w-md mx-auto space-y-5">
+      {/* Title */}
+      <div className="flex items-center justify-between px-1">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+            প্রোগ্রেস ড্যাশবোর্ড
+          </h1>
+          <p className="text-xs text-slate-500 font-semibold">
+            আপনার দৈনন্দিন শেখার সম্পূর্ণ হিসাব
+          </p>
+        </div>
+        <div className="w-10 h-10 rounded-2xl bg-white shadow-sm border border-slate-200/80 flex items-center justify-center text-xl">
+          🎯
+        </div>
+      </div>
 
-      {/* প্রোফাইল কার্ড */}
-      <section className="bg-brand text-white rounded-card p-5 mb-5">
-        <p className="font-bold text-lg">👤 {user.name || "শিক্ষার্থী"}</p>
-        <div className="flex justify-between items-center mt-2">
-          <span className="bg-white/20 text-sm px-3 py-1 rounded-full">
-            🏷️ {LEVEL_LABELS[user.current_level]}
-          </span>
+      {/* Dynamic Profile Card */}
+      <section className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div
+              className={`w-14 h-14 rounded-2xl bg-gradient-to-tr ${currentLevelInfo.badge} flex items-center justify-center text-white text-2xl font-black shadow-md shadow-indigo-500/20`}
+            >
+              {user.name ? user.name.charAt(0).toUpperCase() : "👤"}
+            </div>
+            <div>
+              <span className="text-[10px] font-extrabold text-slate-400 tracking-wider uppercase">
+                শিক্ষার্থী প্রোফাইল
+              </span>
+              <h2 className="text-xl font-black text-slate-800 leading-tight">
+                {user.name || "ব্যবহারকারী"}
+              </h2>
+            </div>
+          </div>
+          <div className="bg-orange-50 text-orange-600 border border-orange-100 px-3 py-1 rounded-full text-xs font-black flex items-center gap-1">
+            🔥 {user.streak_count} দিন
+          </div>
+        </div>
+
+        {/* Level Tag & Change Button */}
+        <div
+          className={`p-3.5 rounded-2xl border ${currentLevelInfo.bg} ${currentLevelInfo.border} flex items-center justify-between`}
+        >
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase">
+              বর্তমান লেভেল
+            </p>
+            <p className={`text-xs font-black ${currentLevelInfo.text} mt-0.5`}>
+              {currentLevelInfo.label}
+            </p>
+          </div>
+
           <button
             onClick={() => setShowEditModal(true)}
-            className="bg-white/20 text-sm px-3 py-1 rounded-full"
+            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl shadow-sm border border-slate-200/80 active:scale-95 transition-all flex items-center gap-1.5"
           >
-            ⚙️ Change
+            <span>✏️</span>
+            <span>পরিবর্তন</span>
           </button>
         </div>
-        <p className="mt-3 text-sm">🔥 {user.streak_count} দিন স্ট্রিক</p>
       </section>
 
       {/* ৬০ দিনের চ্যালেঞ্জ */}
-      <section className="bg-white rounded-card p-5 shadow-sm mb-5">
-        <div className="flex justify-between items-center mb-1">
-          <h2 className="font-bold">৬০ দিনের চ্যালেঞ্জ</h2>
-          <span className="text-brand font-semibold text-sm">
+      <section className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-3">
+        <div className="flex justify-between items-center">
+          <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+            <span>🏆</span> ৬০ দিনের চ্যালেঞ্জ
+          </h3>
+          <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100">
             {progressPercent}%
           </span>
         </div>
-        <p className="text-muted text-sm mb-3">
+        <p className="text-xs text-slate-500 font-medium">
           {daysSinceStart} তম দিনের লক্ষ্য পূরণ করা বাকি 🎯
         </p>
-        <div className="w-full bg-surface rounded-full h-2">
+        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200/50">
           <div
-            className="bg-brand h-2 rounded-full"
+            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-700 ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </section>
 
-      {/* অর্জন */}
-      <p className="font-bold mb-2">📊 আপনার অর্জন</p>
-      <section className="grid grid-cols-2 gap-4 mb-5">
-        <div className="bg-white rounded-card p-4 shadow-sm">
-          <p className="text-sm text-muted">📚 শেখা শব্দ</p>
-          <p className="text-xl font-bold text-brand">{learnedWords}টি</p>
-          <p className="text-xs text-muted mt-1">★ {bookmarkedWords}টি বুকমার্ক</p>
+      {/* Stats Grid */}
+      <section className="grid grid-cols-2 gap-4">
+        <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 text-white rounded-3xl p-4 shadow-lg shadow-indigo-500/20 flex flex-col justify-between">
+          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-lg mb-2">
+            📚
+          </div>
+          <div>
+            <p className="text-2xl font-black">{learnedWords}টি</p>
+            <p className="text-[11px] text-indigo-100 font-semibold opacity-90 mt-0.5">
+              শেখা শব্দ (★ {bookmarkedWords} বুকমার্ক)
+            </p>
+          </div>
         </div>
-        <div className="bg-white rounded-card p-4 shadow-sm">
-          <p className="text-sm text-muted">💬 শেখা বাক্য</p>
-          <p className="text-xl font-bold text-brand">
-            {categoriesTouched}টি ক্যাটাগরি
-          </p>
-          <p className="text-xs text-muted mt-1">{patternsCompleted}টি প্যাটার্ন</p>
+
+        <div className="bg-gradient-to-br from-emerald-500 via-teal-500 to-teal-600 text-white rounded-3xl p-4 shadow-lg shadow-teal-500/20 flex flex-col justify-between">
+          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-lg mb-2">
+            💬
+          </div>
+          <div>
+            <p className="text-2xl font-black">{patternsCompleted}টি</p>
+            <p className="text-[11px] text-teal-100 font-semibold opacity-90 mt-0.5">
+              প্যাটার্ন ({categoriesTouched} ক্যাটাগরি)
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* সাপ্তাহিক এক্টিভিটি */}
-      <p className="font-bold mb-2">📅 এই সপ্তাহের অ্যাক্টিভিটি</p>
-      <section className="bg-white rounded-card p-5 shadow-sm">
-        <div className="flex justify-between items-end h-24">
+      {/* সাপ্তাহিক অ্যাক্টিভিটি Bar Graph */}
+      <section className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+            <span>📅</span> এই সপ্তাহের অ্যাক্টিভিটি
+          </h3>
+          <span className="text-[10px] text-slate-400 font-bold">গত ৭ দিন</span>
+        </div>
+        <div className="flex justify-between items-end h-24 pt-2">
           {last7.map((day, i) => (
-            <div key={i} className="flex flex-col items-center gap-1 flex-1">
-              <div
-                className={`w-4 rounded-full ${
-                  day.active ? "bg-brand h-16" : "bg-surface h-4"
-                }`}
-              />
-              <span className="text-[10px] text-muted">{day.label}</span>
+            <div key={i} className="flex flex-col items-center gap-2 flex-1">
+              <div className="h-16 w-full flex items-end justify-center">
+                <div
+                  className={`w-3.5 rounded-full transition-all duration-500 ${
+                    day.active
+                      ? "bg-gradient-to-t from-indigo-600 to-purple-500 h-14 shadow-md shadow-indigo-500/30"
+                      : "bg-slate-100 h-3"
+                  }`}
+                />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400">
+                {day.label}
+              </span>
             </div>
           ))}
         </div>
       </section>
 
+      {/* Modal */}
       {showEditModal && (
         <OnboardingModal
           mode="edit"
@@ -240,4 +336,3 @@ export default function ProgressPage() {
     </main>
   );
 }
-  
