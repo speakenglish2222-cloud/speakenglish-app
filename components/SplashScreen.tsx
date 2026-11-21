@@ -14,11 +14,11 @@ export default function SplashScreen() {
 
     const leaveTimer = setTimeout(() => {
       setLeaving(true);
-    }, 1500);
+    }, 2500);
 
     const unmountTimer = setTimeout(() => {
       setMounted(false);
-    }, 2050);
+    }, 3100);
 
     return () => {
       cancelAnimationFrame(raf);
@@ -33,7 +33,7 @@ export default function SplashScreen() {
     <div
       style={{
         opacity: leaving ? 0 : active ? 1 : 0,
-        transition: "opacity 500ms cubic-bezier(0.22, 1, 0.36, 1)",
+        transition: "opacity 600ms cubic-bezier(0.22, 1, 0.36, 1)",
       }}
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white pointer-events-none select-none"
     >
@@ -46,7 +46,7 @@ export default function SplashScreen() {
             : "scale(0.92)",
           opacity: leaving ? 0 : active ? 1 : 0,
           transition:
-            "transform 700ms cubic-bezier(0.22, 1, 0.36, 1), opacity 600ms cubic-bezier(0.22, 1, 0.36, 1)",
+            "transform 750ms cubic-bezier(0.22, 1, 0.36, 1), opacity 650ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
         className="flex flex-col items-center justify-center px-6 text-center"
       >
@@ -63,7 +63,7 @@ export default function SplashScreen() {
             opacity: leaving ? 0 : active ? 1 : 0,
             transform: active ? "translateY(0px)" : "translateY(8px)",
             transition:
-              "transform 650ms cubic-bezier(0.22, 1, 0.36, 1) 120ms, opacity 600ms cubic-bezier(0.22, 1, 0.36, 1) 120ms",
+              "transform 700ms cubic-bezier(0.22, 1, 0.36, 1) 140ms, opacity 650ms cubic-bezier(0.22, 1, 0.36, 1) 140ms",
           }}
           className="mt-4 text-sm font-medium tracking-wide text-slate-600"
         >
