@@ -4,7 +4,12 @@ import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
   title: "SpeakEnglish — বাংলা থেকে ইংরেজি শিখুন",
-  description: "Oxford 3000 শব্দ ও বাক্য দিয়ে ইংরেজি শেখার ফ্রি অ্যাপ",
+  description: "Oxford 3000 শব্দ ও বাক্য দিয়ে ইংরেজি শেখার ওয়েব অ্যাপ।",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon-512.png",
+    apple: "/icon-512.png",
+  },
 };
 
 export default function RootLayout({
