@@ -42,6 +42,7 @@ export default function WordsPage() {
   const [cefrLevel, setCefrLevel] = useState<string>("A1");
   const [words, setWords] = useState<Word[]>([]);
   const [learnedCount, setLearnedCount] = useState<number>(0);
+  const [bookmarkCount, setBookmarkCount] = useState<number>(0);
   const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
@@ -164,7 +165,9 @@ export default function WordsPage() {
         .select("word_id")
         .eq("user_id", userId)
         .eq("is_bookmarked", true);
-      setBookmarks(new Set((bookmarkRows ?? []).map((r: any) => r.word_id)));
+      const bookmarkSet = new Set((bookmarkRows ?? []).map((r: any) => r.word_id));
+      setBookmarks(bookmarkSet);
+      setBookmarkCount(bookmarkSet.size);
 
       if (tab === "new") {
         const { data: learnedRows } = await supabase
@@ -201,6 +204,8 @@ export default function WordsPage() {
 
         if (tab === "learned") {
           setLearnedCount(ids.length);
+        } else if (tab === "bookmarked") {
+          setBookmarkCount(ids.length);
         }
 
         if (ids.length === 0) {
@@ -270,12 +275,12 @@ export default function WordsPage() {
     if (!userId) return;
     const isCurrentlyBookmarked = bookmarks.has(wordId);
 
-    setBookmarks((prev) => {
-      const next = new Set(prev);
-      if (isCurrentlyBookmarked) next.delete(wordId);
-      else next.add(wordId);
-      return next;
-    });
+    const nextBookmarks = new Set(bookmarks);
+    if (isCurrentlyBookmarked) nextBookmarks.delete(wordId);
+    else nextBookmarks.add(wordId);
+
+    setBookmarks(nextBookmarks);
+    setBookmarkCount(nextBookmarks.size);
 
     const { data: existing } = await supabase
       .from("user_word_progress")
@@ -301,7 +306,7 @@ export default function WordsPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: "new", label: "নতুন শব্দ" },
     { key: "learned", label: `শেখা শব্দ (${learnedCount})` },
-    { key: "bookmarked", label: "বুকমার্ক" },
+    { key: "bookmarked", label: `বুকমার্ক (${bookmarkCount})` },
   ];
 
   const displayedWords = isSearching ? searchResults : words;
@@ -357,6 +362,17 @@ export default function WordsPage() {
             </span>
             <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
               {learnedCount} টি শব্দ
+            </span>
+          </div>
+        )}
+
+        {!isSearching && tab === "bookmarked" && (
+          <div className="flex items-center justify-between mt-3 px-1">
+            <span className="text-xs font-semibold text-slate-500">
+              মোট বুকমার্ক:
+            </span>
+            <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+              {bookmarkCount} টি শব্দ
             </span>
           </div>
         )}
