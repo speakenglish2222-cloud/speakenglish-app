@@ -41,6 +41,7 @@ export default function WordsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [cefrLevel, setCefrLevel] = useState<string>("A1");
   const [words, setWords] = useState<Word[]>([]);
+  const [learnedCount, setLearnedCount] = useState<number>(0);
   const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
@@ -52,6 +53,18 @@ export default function WordsPage() {
   const [searchResults, setSearchResults] = useState<Word[]>([]);
   const [searching, setSearching] = useState(false);
   const isSearching = searchQuery.trim().length > 0;
+
+  async function fetchLearnedCount(currentUserId: string) {
+    const { count, error } = await supabase
+      .from("user_word_progress")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", currentUserId)
+      .eq("status", "learned");
+
+    if (!error && typeof count === "number") {
+      setLearnedCount(count);
+    }
+  }
 
   useEffect(() => {
     async function initUser() {
@@ -67,6 +80,7 @@ export default function WordsPage() {
       if (user) {
         setUserId(user.id);
         setCefrLevel(LEVEL_MAP[user.current_level] ?? "A1");
+        await fetchLearnedCount(user.id);
 
         const today = todayStr();
         if (user.daily_word_date !== today) {
@@ -88,6 +102,7 @@ export default function WordsPage() {
   useEffect(() => {
     if (!userId) return;
     loadTab();
+    fetchLearnedCount(userId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, tab]);
 
@@ -184,6 +199,10 @@ export default function WordsPage() {
 
         const ids = (rows ?? []).map((r: any) => r.word_id);
 
+        if (tab === "learned") {
+          setLearnedCount(ids.length);
+        }
+
         if (ids.length === 0) {
           setWords([]);
         } else {
@@ -240,6 +259,7 @@ export default function WordsPage() {
     // ⚡ Activity tracking & Streak Update
     await logActivityAndUpdateStreak(userId);
 
+    await fetchLearnedCount(userId);
     await loadTab();
     setAdvancing(false);
 
@@ -280,7 +300,7 @@ export default function WordsPage() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "new", label: "নতুন শব্দ" },
-    { key: "learned", label: "শেখা শব্দগুলো" },
+    { key: "learned", label: `শেখা শব্দ (${learnedCount})` },
     { key: "bookmarked", label: "বুকমার্ক" },
   ];
 
@@ -326,6 +346,17 @@ export default function WordsPage() {
             </span>
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
               {dailyPagesUsed}/{DAILY_PAGE_LIMIT} পেজ
+            </span>
+          </div>
+        )}
+
+        {!isSearching && tab === "learned" && (
+          <div className="flex items-center justify-between mt-3 px-1">
+            <span className="text-xs font-semibold text-slate-500">
+              মোট শেখা শব্দ:
+            </span>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              {learnedCount} টি শব্দ
             </span>
           </div>
         )}
